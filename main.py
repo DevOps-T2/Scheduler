@@ -12,6 +12,9 @@ import random
         # Solver list
 
 
+# Add endpoint: That allow for Thomas to tell when a computation is finish
+
+
 
 
 class SingleComputation(BaseModel):
@@ -88,8 +91,8 @@ def checkIfResourceIfavailable(request: checkResources) -> bool:
 
 
 # Creates a random string, to be used as a computation ID. This string is NOT unique. Default length 8
-def id_generator(size=8, chars=string.ascii_uppercase + string.digits):
-   return ''.join(random.choice(chars) for _ in range(size))
+#def id_generator(size=8, chars=string.ascii_uppercase + string.digits):
+ #  return ''.join(random.choice(chars) for _ in range(size))
 
 
 
@@ -102,11 +105,9 @@ def Launch_Single_Computation(request: SingleComputation):
 
         # The adress to the monitor service
         url = '2655.45445.565/monitor/process/' # <---- Needs to be change to the cluster ID 
-        
-        computation_id = id_generator()
-
+  
         # What to be posted to the monitor service
-        myjson = {'user_id': request.user_id, 'computation_id': computation_id, 'vcpu_usage': request.vcpus, 'memory_usage': request.memory}
+        myjson = {'user_id': request.user_id, 'vcpu_usage': request.vcpus, 'memory_usage': request.memory}
 
         # The answer has the following struct accourding to code in MonitorService:
         
@@ -144,6 +145,13 @@ def Launch_Single_Computation(request: SingleComputation):
 
     else:
         # TO DO: queue the solvers
+
+
+# Calls the monitorservie and deleths the job from it.
+@app.post("/sceduler/FinishComputation")
+def finish_computation(computationID : str):
+
+    # TO DO: call the monitor service, and remove the job from the monitorDatabase
 
 
 if __name__ == "__main__":
