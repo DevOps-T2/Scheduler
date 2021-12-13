@@ -5,6 +5,15 @@ import string
 import random
 
 
+# TO LIST for this file:
+    # Quning of the jobs, is that done in the service or? (if the service handels it, should there be a database connect?) - see line 139, where I think it should be implemented 
+    # Endpoint, that I (Thomas) don't know how works:
+        # Minizin mzn-dispatcher
+        # Solver list
+
+
+
+
 class SingleComputation(BaseModel):
     solver_ids: List[float]
     mzn_id: str #The URL to that point to where the minizin model file is stored. 
@@ -128,8 +137,13 @@ def Launch_Single_Computation(request: SingleComputation):
 
         answer = requests.post(url, json = myjson) 
 
+        # Not sure, how the endpoint works in Minizin 
+
+        # TO DO: User the endpoint from the mzn-dispatcher 
+
+
     else:
-        #queue the solvers
+        # TO DO: queue the solvers
 
 
 if __name__ == "__main__":
