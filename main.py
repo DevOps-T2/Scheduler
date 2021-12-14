@@ -5,6 +5,10 @@ import string
 import random
 
 
+monitorCluserIP = '123.456.789'
+quotasClusterIp = '123.456.789'
+minizinceClusterIp = '123.456.789'
+
 # TO LIST for this file:
     # Quning of the jobs, is that done in the service or? (if the service handels it, should there be a database connect?) - see line 139, where I think it should be implemented 
     # Endpoint, that I (Thomas) don't know how works:
@@ -13,9 +17,6 @@ import random
 
 
 # Add endpoint: That allow for Thomas to tell when a computation is finish
-
-
-
 
 class SingleComputation(BaseModel):
     solver_ids: List[float]
@@ -95,19 +96,28 @@ def checkIfResourceIfavailable(request: checkResources) -> bool:
  #  return ''.join(random.choice(chars) for _ in range(size))
 
 
-
-#@app.post("/LanuchSingleComputation/") 
+@app.post("/LanuchSingleComputation") 
 def Launch_Single_Computation(request: SingleComputation):
 
     if(checkIfResourceIfavailable(request.user_id, request.vcpus, request.memory)):
         
+        # Start minizinc solver:
+
+        # The adress to the monitor service
+        url = minizinceClusterIp + '/run' 
+
+        # The request 
+        myjson = {'model_url': request.mzn_id, 'data_url': request.dzn_id, 'solvers': request.solver_ids}
+
+        computation_id = requests.post(url, json = myjson) 
+
         #Post the job to the monitor Service:
 
         # The adress to the monitor service
-        url = '2655.45445.565/monitor/process/' # <---- Needs to be change to the cluster ID 
+        url = monitorCluserIP + '/monitor/process/'  
   
         # What to be posted to the monitor service
-        myjson = {'user_id': request.user_id, 'vcpu_usage': request.vcpus, 'memory_usage': request.memory}
+        myjson = {'user_id': request.user_id, 'computation_id': computation_id, 'vcpu_usage': request.vcpus, 'memory_usage': request.memory}
 
         # The answer has the following struct accourding to code in MonitorService:
         
@@ -129,30 +139,37 @@ def Launch_Single_Computation(request: SingleComputation):
         
         else:
             print("Job NOT add to monitor service")
+    
+        return computation_id
 
-        # Start minizinc solver:
+    #Checks to see if the requested job is 1 jobs with too many solvers to run in prallel. Meaning solvers > limit resources for just this job.
+    # Then the jobs should be can canceled
 
-        url = '5553.45454.4544/run' # <---- Needs to be change to the cluster ID
+     #Gets the limit resources for a user, by call the GetQuotasEndPoint
+    # getQuotaresult = requests.get("253.2554.546565.46545/quotas/" + request.user_id) # <-- Need to be change to the internal Cluster IP, when uploaded to Google Cloud
 
-        myjson = {'model_url': request.mzn_id, 'data_url': request.dzn_id, 'solvers': request.solver_ids}
+    #Dummy result
+    getQuotasresult
 
-        answer = requests.post(url, json = myjson) 
+    limit_vcpu = getQuotasresult.get("vCpu")
 
-        # Not sure, how the endpoint works in Minizin 
+    if len(request.solver_ids) > limit_vcpu:
 
-        # TO DO: User the endpoint from the mzn-dispatcher 
-
-
+        return "The job could not be created, doe to that the total amount of solver exceed the number of vCPUs available"
+        
     else:
-        # TO DO: queue the solvers
+        # TO DO: queue the solvers 
+        
+        return
 
 
 # Calls the monitorservie and deleths the job from it.
 @app.post("/sceduler/FinishComputation")
 def finish_computation(computationID : str):
 
-    # TO DO: call the monitor service, and remove the job from the monitorDatabase
+    answer = requests.delete(monitorCluserIP + '/monitor/process/' + computationID)
 
+    print("The job has been deleth")
 
 if __name__ == "__main__":
 
