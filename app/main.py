@@ -1,9 +1,20 @@
+import os
 from typing import List
 from fastapi import FastAPI, HTTPException, requests
 from pydantic import BaseModel
+import mysql.connector
+from mysql.connector import Error
+from dotenv import load_dotenv
 import string
 import random
 
+load_dotenv()
+
+DATABASE_NAME = os.getenv("DATABASE_NAME")
+DATABASE_HOST_READ = os.getenv("DATABASE_HOST_READ")
+DATABASE_HOST_WRITE = os.getenv("DATABASE_HOST_WRITE")
+DATABASE_USER = os.getenv("DATABASE_USER")
+DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD")
 
 monitorCluserIP = '123.456.789'
 quotasClusterIp = '123.456.789'
@@ -96,6 +107,25 @@ def checkIfResourceIfavailable(request: checkResources) -> bool:
  #  return ''.join(random.choice(chars) for _ in range(size))
 
 
+@app.get("/testdb") 
+def test_db():
+    sql_write: str = "INSERT INTO scheduler (user_id, job_memory, job_vcpu, mzn_id) values (%s, %s, %s, %s)"
+    writeDB(sql_write, ("user1", 1000, 8, 0))
+
+    sql_read: str = "SELECT * FROM scheduler"
+    read_after_write = readDB(sql_read)
+    print(read_after_write)
+
+    sql_delete: str = "DELETE FROM scheduler WHERE user_id = 'user1'"
+    writeDB(sql_delete)
+
+    sql_read: str = "SELECT * FROM scheduler"
+    read_after_delete = readDB(sql_read)
+    print(read_after_delete)
+
+    return "wrote, read and deleted from database"
+
+
 @app.post("/LanuchSingleComputation") 
 def Launch_Single_Computation(request: SingleComputation):
 
@@ -175,7 +205,59 @@ if __name__ == "__main__":
 
     Launch_Single_Computation()
 
+def writeDB(sql_prepared_statement: str, sql_placeholder_values: tuple = ()):
+    """Takes a prepared statement with values and writes to database
 
+    Args:
+        sql_prepared_statement (str): an sql statement with (optional) placeholder values
+        sql_placeholder_values (tuple, optional): The values for the prepared statement. Defaults to ().
+    """
+    connection = mysql.connector.connect(database=DATABASE_NAME,
+                                         host=DATABASE_HOST_WRITE,
+                                         user=DATABASE_USER,
+                                         password=DATABASE_PASSWORD
+                                         )
+
+    try:
+        if (connection.is_connected()):
+            cursor = connection.cursor(prepared=True)
+            cursor.execute(sql_prepared_statement, sql_placeholder_values)
+            connection.commit()
+    except Error as e:
+        raise HTTPException(
+            status_code=500, detail="Error while contacting database. " + str(e))
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def readDB(sql_prepared_statement: str, sql_placeholder_values: tuple = ()):
+    """Takes a prepared statement with values and makes a query to the database
+
+    Args:
+        sql_prepared_statement (str): an sql statement with (optional) placeholder values
+        sql_placeholder_values (tuple, optional): The values for the prepared statement. Defaults to ().
+
+    Returns:
+        List(tuple): The fetched result
+    """
+    connection = mysql.connector.connect(database=DATABASE_NAME,
+                                         host=DATABASE_HOST_READ,
+                                         user=DATABASE_USER,
+                                         password=DATABASE_PASSWORD
+                                         )
+    try:
+        if (connection.is_connected()):
+            cursor = connection.cursor(prepared=True)
+            cursor.execute(sql_prepared_statement, sql_placeholder_values)
+            result = cursor.fetchall()
+            return result
+    except Error as e:
+        raise HTTPException(
+            status_code=500, detail="Error while contacting database. " + str(e))
+    finally:
+        cursor.close()
+        connection.close()
 
 
 
