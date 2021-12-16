@@ -58,17 +58,17 @@ class LaunchComputationRequest(BaseModel):
 
 # Expected results from endpoints used for testing:
 
-app = FastAPI()
-
 # Creates a random string, to be used as a computation ID. This string is NOT unique. Default length 8
 #def id_generator(size=8, chars=string.ascii_uppercase + string.digits):
  #  return ''.join(random.choice(chars) for _ in range(size))
 
+app = FastAPI()
 
 @app.get("/testdb") 
 def test_db():
-    sql_write: str = "INSERT INTO scheduler (user_id, job_memory, job_vcpu, mzn_id) values (%s, %s, %s, %s)"
-    writeDB(sql_write, ("user1", 1000, 8, 0))
+    """
+    sql_write: str = "INSERT INTO scheduler (user_id, job_memory, job_vcpu, mzn_url, dzn_url) values (%s, %s, %s, %s, %s)"
+    writeDB(sql_write, ("user1", 1000, 8, "durl", "murl"))
 
     sql_read: str = "SELECT * FROM scheduler"
     read_after_write = readDB(sql_read)
@@ -79,7 +79,17 @@ def test_db():
 
     sql_read: str = "SELECT * FROM scheduler"
     read_after_delete = readDB(sql_read)
-    print(read_after_delete)
+    print(read_after_delete)"""
+
+    job = SingleComputation(solver_ids = [1,2,3], 
+                            solver_options = [], 
+                            mzn_url = "url", 
+                            dzn_url = "url", 
+                            user_id = "user1", 
+                            memory=2000, 
+                            vcpus = 2)
+
+    schedule_job(job)
 
     return "wrote, read and deleted from database"
 
@@ -159,6 +169,8 @@ if __name__ == "__main__":
 
     Launch_Single_Computation()
 
+
+
 # Checks to see if the resources that a user asks for is available
 def checkIfResourceIfavailable(request: checkResources) -> bool:
     # initialize values to allow increments later
@@ -198,8 +210,24 @@ def schedule_job(job: SingleComputation):
     Args:
         job (SingleComputation): The job to be scheduled
     """
+    scheduler_prepared_sql: str = "INSERT INTO scheduler (user_id, job_memory, job_vcpu, mzn_url, dzn_url) values (%s, %s, %s, %s, %s)"
+    schduler_values = (job.user_id, job.memory, job.vcpus, job.mzn_url, job.dzn_url)
 
+    # write data to scheduler table and return the auto incremented id 
+    inserted_row_scheduler_id = writeDB(scheduler_prepared_sql, schduler_values)
 
+    # write all the solver_ids to the scheduler_solver table
+    scheduler_solver_prepared_sql: str = "INSERT INTO scheduler_solver (scheduler_id, solver_id) values (%s, %s)"
+    for solver_id in job.solver_ids:
+        writeDB(scheduler_solver_prepared_sql, (inserted_row_scheduler_id, solver_id))
+
+def load_scheduled_job(scheduler_id: int):
+    return
+
+def delete_scheduled_job(scheduler_id: int):
+    return
+
+def get_all_user_scheduled_jobs(user_id: str):
     return
 
 def get_user_quota(user_id: str):
@@ -210,9 +238,11 @@ def get_user_quota(user_id: str):
     return getQuotaResult
 
 def get_mzn_instance(mzn_id: int):
-    
+    # get mzn and dzn urls from mzn_instance table in mzn_data service
 
-    return
+    mzn_instance_response = {"mzn_url": "www.mznurl.com", "dzn_url": "www.dznurl.com"}
+
+    return mzn_instance_response
 
 def get_user_monitor_processes(user_id: str):
     # Get current used resources for a user:
@@ -239,11 +269,13 @@ def writeDB(sql_prepared_statement: str, sql_placeholder_values: tuple = ()):
                                          password=DATABASE_PASSWORD
                                          )
 
+    lastrowid = 0
     try:
         if (connection.is_connected()):
             cursor = connection.cursor(prepared=True)
             cursor.execute(sql_prepared_statement, sql_placeholder_values)
             connection.commit()
+            lastrowid = cursor.lastrowid
     except Error as e:
         raise HTTPException(
             status_code=500, detail="Error while contacting database. " + str(e))
@@ -251,6 +283,7 @@ def writeDB(sql_prepared_statement: str, sql_placeholder_values: tuple = ()):
         cursor.close()
         connection.close()
 
+    return lastrowid
 
 def readDB(sql_prepared_statement: str, sql_placeholder_values: tuple = ()):
     """Takes a prepared statement with values and makes a query to the database
