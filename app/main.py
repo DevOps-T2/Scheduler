@@ -89,9 +89,10 @@ def test_db():
                             memory=2000, 
                             vcpus = 2)
 
-    schedule_job(job)
-    print(get_all_user_scheduled_jobs(job.user_id))
+    # schedule_job(job)
+    # print(get_all_user_scheduled_jobs(job.user_id))
     # delete_scheduled_job("24")
+    launch_scheduled_job("user1")
 
 
     return "wrote, read and deleted from database"
@@ -99,66 +100,32 @@ def test_db():
 
 @app.post("/LanuchSingleComputation") 
 def Launch_Single_Computation(request: LaunchComputationRequest):
-
-    if(checkIfResourceIfavailable(request.user_id, request.vcpus, request.memory)):
-        
-        # Start minizinc solver:
-
-        # The adress to the monitor service
-        url = minizinceClusterIp + '/run' 
-
-        # The request 
-        myjson = {'model_url': request.mzn_id, 'data_url': request.dzn_id, 'solvers': request.solver_ids}
-
-        computation_id = requests.post(url, json = myjson) 
-
-        #Post the job to the monitor Service:
-
-        # The adress to the monitor service
-        url = monitorCluserIP + '/monitor/process/'  
-  
-        # What to be posted to the monitor service
-        myjson = {'user_id': request.user_id, 'computation_id': computation_id, 'vcpu_usage': request.vcpus, 'memory_usage': request.memory}
-
-        # The answer has the following struct accourding to code in MonitorService:
-        
-        '''
-        class GetMonitorProcess(BaseModel):
-            id: int
-            user_id: str
-            computation_id: str
-            vcpu_usage: int
-            memory_usage: int
-        '''
-
-        # Not sure, if that is correct, or the answer should just be a status code??? 
-
-        answer = requests.post(url, json = myjson)
-
-        if answer == 200:
-            print("Job add to the monitor service")
-        
-        else:
-            print("Job NOT add to monitor service")
-    
-        return computation_id
-
     #Checks to see if the requested job is 1 jobs with too many solvers to run in prallel. Meaning solvers > limit resources for just this job.
     # Then the jobs should be can canceled
-
     getQuotasresult = get_user_quota(request.user_id)
-
     limit_vcpu = getQuotasresult.get("vCpu")
-
     if len(request.solver_ids) > limit_vcpu:
+        raise HTTPException(status_code=403, detail="""The requested job can never be launched, 
+                                                    because the requested amount of parallel solvers (%s) 
+                                                    exceeds the user's quota for vCPUs (%s)""" 
+                                                    % (len(request.solver_ids), limit_vcpu))
 
-        return "The job could not be created, doe to that the total amount of solver exceed the number of vCPUs available"
-        
+    # get mzn urls from mzn id
+    mzn_data = get_mzn_instance(request.mzn_id)
+
+    # create a job object with both mzn url and request data
+    job = SingleComputation(solver_ids = request.solver_ids, 
+                            solver_options = request.solver_options, 
+                            mzn_url = mzn_data.mzn_url, 
+                            dzn_url = mzn_data.dzn_url, 
+                            user_id = request.user_id, 
+                            memory = request.memory, 
+                            vcpus = request.vcpus)
+
+    if(checkIfResourceIfavailable(job.user_id, job.vcpus, job.memory)):
+        launch_job(job)
     else:
-        # TO DO: queue the solvers 
-        
-        return
-
+        schedule_job(job)
 
 # Calls the monitorservie and deleths the job from it.
 @app.post("/sceduler/FinishComputation")
@@ -190,8 +157,7 @@ def checkIfResourceIfavailable(request: checkResources) -> bool:
 
     # Checks if the current user, has any jobs running
     if len(getMonitorForUserResult) == 0:
-        current_vcpu_usage = 0
-        current_memory_usage = 0
+        return
 
     #Calculates the current_vcpu_usage and currrent_memory_usage
     if len(getMonitorForUserResult) > 0:
@@ -206,6 +172,71 @@ def checkIfResourceIfavailable(request: checkResources) -> bool:
         return True
     else:
         return False
+
+def launch_scheduled_job(user_id):
+    """Find oldest scheduled job and launch it after deleting it from the "queue".
+
+    Args:
+        user_id (str): the id of the user
+    """
+    scheduled_jobs = get_all_user_scheduled_jobs(user_id)
+    oldest_scheduled_job = min(scheduled_jobs, key=lambda dict: dict["scheduler_id"])
+
+    delete_scheduled_job(oldest_scheduled_job.get("scheduler_id"))
+    launch_job(oldest_scheduled_job.get("job"))
+
+    return
+
+def launch_job(job: SingleComputation):
+    """Contact solver execution service and launch an actual execution / job
+
+    Args:
+        job (SingleComputation): All the info the solver execution service needs
+
+    Returns:
+        [type]: [description]
+    """
+    # Start minizinc solver:
+
+    # The adress to the monitor service
+    url = minizinceClusterIp + '/run' 
+
+    # The request 
+    myjson = {'model_url': job.mzn_url, 'data_url': job.dzn_url, 'solvers': job.solver_ids}
+
+    computation_id = requests.post(url, json = myjson) 
+
+    #Post the job to the monitor Service:
+
+    # The adress to the monitor service
+    url = monitorCluserIP + '/monitor/process/'  
+
+    # What to be posted to the monitor service
+    myjson = {'user_id': job.user_id, 'computation_id': computation_id, 'vcpu_usage': job.vcpus, 'memory_usage': job.memory}
+
+    # The answer has the following struct accourding to code in MonitorService:
+    
+    '''
+    class GetMonitorProcess(BaseModel):
+        id: int
+        user_id: str
+        computation_id: str
+        vcpu_usage: int
+        memory_usage: int
+    '''
+
+    # Not sure, if that is correct, or the answer should just be a status code??? 
+
+    answer = requests.post(url, json = myjson)
+
+    if answer == 200:
+        print("Job add to the monitor service")
+    
+    else:
+        print("Job NOT add to monitor service")
+
+    return computation_id
+    
 
 def schedule_job(job: SingleComputation):
     """Adds job to queue
@@ -262,7 +293,7 @@ def get_all_user_scheduled_jobs(user_id: str):
 
     scheduled_jobs = []
     for scheduler_id in scheduler_ids:
-        scheduled_jobs.append(load_scheduled_job(scheduler_id))
+        scheduled_jobs.append({"scheduler_id": scheduler_id, "job": load_scheduled_job(scheduler_id)})
 
     return scheduled_jobs
 
