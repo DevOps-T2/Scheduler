@@ -10,15 +10,19 @@ import random
 
 load_dotenv()
 
+# database credentials
 DATABASE_NAME = os.getenv("DATABASE_NAME")
 DATABASE_HOST_READ = os.getenv("DATABASE_HOST_READ")
 DATABASE_HOST_WRITE = os.getenv("DATABASE_HOST_WRITE")
 DATABASE_USER = os.getenv("DATABASE_USER")
 DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD")
 
-monitorCluserIP = '123.456.789'
-quotasClusterIp = '123.456.789'
-minizinceClusterIp = '123.456.789'
+# service ips
+MONITOR_SERVICE_IP = os.getenv("MONITOR_SERVICE_IP")
+QUOTA_SERVICE_IP = os.getenv("QUOTA_SERVICE_IP")
+MZN_SERVICE_IP = os.getenv("MZN_SERVICE_IP")
+
+
 
 # TO LIST for this file:
     # Quning of the jobs, is that done in the service or? (if the service handels it, should there be a database connect?) - see line 139, where I think it should be implemented 
@@ -180,12 +184,14 @@ def launch_scheduled_job(user_id):
         user_id (str): the id of the user
     """
     scheduled_jobs = get_all_user_scheduled_jobs(user_id)
+
+    if (len(scheduled_jobs) == 0):
+        return
+
     oldest_scheduled_job = min(scheduled_jobs, key=lambda dict: dict["scheduler_id"])
 
     delete_scheduled_job(oldest_scheduled_job.get("scheduler_id"))
     launch_job(oldest_scheduled_job.get("job"))
-
-    return
 
 def launch_job(job: SingleComputation):
     """Contact solver execution service and launch an actual execution / job
