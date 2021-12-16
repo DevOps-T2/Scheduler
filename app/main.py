@@ -29,10 +29,11 @@ minizinceClusterIp = '123.456.789'
 
 # Add endpoint: That allow for Thomas to tell when a computation is finish
 
+# All data that needs to be added to database(s)
 class SingleComputation(BaseModel):
     solver_ids: List[float]
-    mzn_id: str #The URL to that point to where the minizin model file is stored. 
-    dzn_id: str #The URL that points to where the minizin data fil is stored.
+    mzn_url: str #The URL to that point to where the minizin model file is stored. 
+    dzn_url: str #The URL that points to where the minizin data fil is stored.
     vcpus: int #The amount of Vcpu resources that this job should have
     memory: int #The amout of memory resources that this job should have
     solver_options: List[str]
@@ -46,41 +47,32 @@ class checkResources:
     vcpu_asked: int
     memory_asked: int
 
-#Expected results from endpoints used for testing:
+# Request schema for when wanting to launch computation
+class LaunchComputationRequest(BaseModel):
+    solver_ids: List[float]
+    mzn_id: str #The id of a minizinc instance. Pointing to a database row that includes both mzn and dzn urls
+    vcpus: int #The amount of Vcpu resources that this job should have
+    memory: int #The amout of memory resources that this job should have
+    solver_options: List[str]
+    user_id: str # don't know the format that the guid is stored in.
 
-#GetQuotas:
-getQuotasresult = {"memory": 10, "vCpu" : 15}
-#Get current used resources for a user:
-
-job1ForUser1 = {'id': 1, 'user_id': 1, 'computation_id': 130, 'vcpu_usage': 2, 'memory_usage': 5}
-job2ForUser1 = {'id': 1, 'user_id': 1, 'computation_id': 131, 'vcpu_usage': 4, 'memory_usage': 3}
-job3ForUser1 = {'id': 1, 'user_id': 1, 'computation_id': 132, 'vcpu_usage': 2, 'memory_usage': 4}
-
-getMonitorForUserResult = [job1ForUser1, job2ForUser1, job3ForUser1]
+# Expected results from endpoints used for testing:
 
 app = FastAPI()
 
 # Checks to see if the resources that a user asks for is available
 def checkIfResourceIfavailable(request: checkResources) -> bool:
+    # initialize values to allow increments later
     current_vcpu_usage = 0
     current_memory_usage = 0
-    available_vcpu = 0
-    available_memory = 0
-    limit_vcpu = 0
-    limit_memory = 0
     
     #Gets the limit resources for a user, by call the GetQuotasEndPoint
-    # getQuotaresult = requests.get("253.2554.546565.46545/quotas/" + request.user_id) # <-- Need to be change to the internal Cluster IP, when uploaded to Google Cloud
+    getQuotaResult = get_user_quota(request.user_id)
+    limit_vcpu = getQuotaResult.get("vCpu")
+    limit_memory = getQuotaResult.get("memory")
 
-    # Using dummy result:
-    limit_vcpu = getQuotasresult.get("vCpu")
-    limit_memory = getQuotasresult.get("memory")
-
-    # Need to call the monitor endpoint to see if the user has any jobs running
-    #getMonitorForUserResult = requests.get("232652.2652.484/monitor/processes/"+ request.user_id) # <-- Need to be change to the internal Cluster IP, when uploaded to Google Cloud
-
-    # Using dummy result:
-    getMonitorForUserResult
+    # A list of monitored processes
+    getMonitorForUserResult = get_user_monitor_processes(request.user_id)
 
     # Checks if the current user, has any jobs running
     if len(getMonitorForUserResult) == 0:
@@ -101,6 +93,35 @@ def checkIfResourceIfavailable(request: checkResources) -> bool:
     else:
         return False
 
+def schedule_job(job: SingleComputation):
+    """Adds job to queue
+
+    Args:
+        job (SingleComputation): The job to be scheduled
+    """
+    return
+
+def get_user_quota(user_id: str):
+    # GetQuota:
+    #getQuotaResult = requests.get("253.2554.546565.46545/quotas/" + request.user_id) # <-- Need to be change to the internal Cluster IP, when uploaded to Google Cloud
+    getQuotaResult = {"memory": 10, "vCpu" : 15}
+
+    return getQuotaResult
+
+def get_mzn_instance(mzn_id: int):
+    return
+
+def get_user_monitor_processes(user_id: str):
+    # Get current used resources for a user:
+    # Need to call the monitor endpoint to see if the user has any jobs running
+    #getMonitorForUserResult = requests.get("232652.2652.484/monitor/processes/"+ request.user_id) # <-- Need to be change to the internal Cluster IP, when uploaded to Google Cloud
+    getMonitorForUserResult = [
+        {'id': 1, 'user_id': 1, 'computation_id': 130, 'vcpu_usage': 2, 'memory_usage': 5}, 
+        {'id': 1, 'user_id': 1, 'computation_id': 131, 'vcpu_usage': 4, 'memory_usage': 3}, 
+        {'id': 1, 'user_id': 1, 'computation_id': 132, 'vcpu_usage': 2, 'memory_usage': 4}
+        ]
+
+    return getMonitorForUserResult
 
 # Creates a random string, to be used as a computation ID. This string is NOT unique. Default length 8
 #def id_generator(size=8, chars=string.ascii_uppercase + string.digits):
@@ -127,7 +148,7 @@ def test_db():
 
 
 @app.post("/LanuchSingleComputation") 
-def Launch_Single_Computation(request: SingleComputation):
+def Launch_Single_Computation(request: LaunchComputationRequest):
 
     if(checkIfResourceIfavailable(request.user_id, request.vcpus, request.memory)):
         
@@ -175,11 +196,7 @@ def Launch_Single_Computation(request: SingleComputation):
     #Checks to see if the requested job is 1 jobs with too many solvers to run in prallel. Meaning solvers > limit resources for just this job.
     # Then the jobs should be can canceled
 
-     #Gets the limit resources for a user, by call the GetQuotasEndPoint
-    # getQuotaresult = requests.get("253.2554.546565.46545/quotas/" + request.user_id) # <-- Need to be change to the internal Cluster IP, when uploaded to Google Cloud
-
-    #Dummy result
-    getQuotasresult
+    getQuotasresult = get_user_quota(request.user_id)
 
     limit_vcpu = getQuotasresult.get("vCpu")
 
@@ -204,6 +221,7 @@ def finish_computation(computationID : str):
 if __name__ == "__main__":
 
     Launch_Single_Computation()
+
 
 def writeDB(sql_prepared_statement: str, sql_placeholder_values: tuple = ()):
     """Takes a prepared statement with values and writes to database
