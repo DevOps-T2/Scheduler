@@ -31,7 +31,7 @@ minizinceClusterIp = '123.456.789'
 
 # All data that needs to be added to database(s)
 class SingleComputation(BaseModel):
-    solver_ids: List[float]
+    solver_ids: List[int]
     mzn_url: str #The URL to that point to where the minizin model file is stored. 
     dzn_url: str #The URL that points to where the minizin data fil is stored.
     vcpus: int #The amount of Vcpu resources that this job should have
@@ -90,6 +90,8 @@ def test_db():
                             vcpus = 2)
 
     schedule_job(job)
+    print(get_all_user_scheduled_jobs(job.user_id))
+
 
     return "wrote, read and deleted from database"
 
@@ -222,13 +224,40 @@ def schedule_job(job: SingleComputation):
         writeDB(scheduler_solver_prepared_sql, (inserted_row_scheduler_id, solver_id))
 
 def load_scheduled_job(scheduler_id: int):
-    return
+    # get all solver ids and save in a list
+    scheduler_solver_prepared_sql: str = "SELECT solver_id FROM scheduler_solver WHERE scheduler_id = %s" 
+    solver_id_tuples = readDB(scheduler_solver_prepared_sql, (scheduler_id,))
+    solver_ids = [id_tuple[0] for id_tuple in solver_id_tuples]
+
+    # get the rest of the data and save it in an object along with solver ids
+    scheduler_prepared_sql: str = "SELECT user_id, job_memory, job_vcpu, mzn_url, dzn_url FROM scheduler WHERE id = %s"
+    result = readDB(scheduler_prepared_sql, (scheduler_id,))[0]
+
+    scheduled_job = SingleComputation(user_id = result[0], 
+                                    memory = result[1], 
+                                    vcpus = result[2],
+                                    mzn_url = result[3],
+                                    dzn_url = result[4],
+                                    solver_ids=solver_ids,
+                                    solver_options = [])
+
+    return scheduled_job
 
 def delete_scheduled_job(scheduler_id: int):
     return
 
 def get_all_user_scheduled_jobs(user_id: str):
-    return
+    scheduler_prepared_sql: str = "SELECT id FROM scheduler WHERE user_id = %s"
+    scheduler_values = (user_id,)
+
+    scheduler_id_tuples: List[tuple] = readDB(scheduler_prepared_sql, scheduler_values)
+    scheduler_ids = [id_tuple[0] for id_tuple in scheduler_id_tuples] # map list of tuples to list of ints
+
+    scheduled_jobs = []
+    for scheduler_id in scheduler_ids:
+        scheduled_jobs.append(load_scheduled_job(scheduler_id))
+
+    return scheduled_jobs
 
 def get_user_quota(user_id: str):
     # GetQuota:
