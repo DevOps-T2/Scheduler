@@ -4,7 +4,8 @@ Create Table: CREATE TABLE `scheduler` (
   `user_id` varchar(255) DEFAULT NULL,
   `job_memory` int DEFAULT NULL,
   `job_vcpu` int DEFAULT NULL,
-  `mzn_id` int DEFAULT NULL,
+  `mzn_url` varchar(255) DEFAULT NULL,
+  `dzn_url` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id_UNIQUE` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci

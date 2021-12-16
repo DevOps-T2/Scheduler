@@ -49,7 +49,7 @@ class checkResources:
 
 # Request schema for when wanting to launch computation
 class LaunchComputationRequest(BaseModel):
-    solver_ids: List[float]
+    solver_ids: List[int]
     mzn_id: str #The id of a minizinc instance. Pointing to a database row that includes both mzn and dzn urls
     vcpus: int #The amount of Vcpu resources that this job should have
     memory: int #The amout of memory resources that this job should have
@@ -59,69 +59,6 @@ class LaunchComputationRequest(BaseModel):
 # Expected results from endpoints used for testing:
 
 app = FastAPI()
-
-# Checks to see if the resources that a user asks for is available
-def checkIfResourceIfavailable(request: checkResources) -> bool:
-    # initialize values to allow increments later
-    current_vcpu_usage = 0
-    current_memory_usage = 0
-    
-    #Gets the limit resources for a user, by call the GetQuotasEndPoint
-    getQuotaResult = get_user_quota(request.user_id)
-    limit_vcpu = getQuotaResult.get("vCpu")
-    limit_memory = getQuotaResult.get("memory")
-
-    # A list of monitored processes
-    getMonitorForUserResult = get_user_monitor_processes(request.user_id)
-
-    # Checks if the current user, has any jobs running
-    if len(getMonitorForUserResult) == 0:
-        current_vcpu_usage = 0
-        current_memory_usage = 0
-
-    #Calculates the current_vcpu_usage and currrent_memory_usage
-    if len(getMonitorForUserResult) > 0:
-        for x in getMonitorForUserResult:
-            current_vcpu_usage += x.get('vcpu_usage')
-            current_memory_usage += x.get('memory_usage')
-    
-    available_vcpu = limit_vcpu - current_vcpu_usage
-    available_memory = limit_memory - current_memory_usage
-
-    if (available_vcpu > request.vcpu_asked) and (available_memory > request.memory_asked):
-        return True
-    else:
-        return False
-
-def schedule_job(job: SingleComputation):
-    """Adds job to queue
-
-    Args:
-        job (SingleComputation): The job to be scheduled
-    """
-    return
-
-def get_user_quota(user_id: str):
-    # GetQuota:
-    #getQuotaResult = requests.get("253.2554.546565.46545/quotas/" + request.user_id) # <-- Need to be change to the internal Cluster IP, when uploaded to Google Cloud
-    getQuotaResult = {"memory": 10, "vCpu" : 15}
-
-    return getQuotaResult
-
-def get_mzn_instance(mzn_id: int):
-    return
-
-def get_user_monitor_processes(user_id: str):
-    # Get current used resources for a user:
-    # Need to call the monitor endpoint to see if the user has any jobs running
-    #getMonitorForUserResult = requests.get("232652.2652.484/monitor/processes/"+ request.user_id) # <-- Need to be change to the internal Cluster IP, when uploaded to Google Cloud
-    getMonitorForUserResult = [
-        {'id': 1, 'user_id': 1, 'computation_id': 130, 'vcpu_usage': 2, 'memory_usage': 5}, 
-        {'id': 1, 'user_id': 1, 'computation_id': 131, 'vcpu_usage': 4, 'memory_usage': 3}, 
-        {'id': 1, 'user_id': 1, 'computation_id': 132, 'vcpu_usage': 2, 'memory_usage': 4}
-        ]
-
-    return getMonitorForUserResult
 
 # Creates a random string, to be used as a computation ID. This string is NOT unique. Default length 8
 #def id_generator(size=8, chars=string.ascii_uppercase + string.digits):
@@ -222,6 +159,72 @@ if __name__ == "__main__":
 
     Launch_Single_Computation()
 
+# Checks to see if the resources that a user asks for is available
+def checkIfResourceIfavailable(request: checkResources) -> bool:
+    # initialize values to allow increments later
+    current_vcpu_usage = 0
+    current_memory_usage = 0
+    
+    #Gets the limit resources for a user, by call the GetQuotasEndPoint
+    getQuotaResult = get_user_quota(request.user_id)
+    limit_vcpu = getQuotaResult.get("vCpu")
+    limit_memory = getQuotaResult.get("memory")
+
+    # A list of monitored processes
+    getMonitorForUserResult = get_user_monitor_processes(request.user_id)
+
+    # Checks if the current user, has any jobs running
+    if len(getMonitorForUserResult) == 0:
+        current_vcpu_usage = 0
+        current_memory_usage = 0
+
+    #Calculates the current_vcpu_usage and currrent_memory_usage
+    if len(getMonitorForUserResult) > 0:
+        for x in getMonitorForUserResult:
+            current_vcpu_usage += x.get('vcpu_usage')
+            current_memory_usage += x.get('memory_usage')
+    
+    available_vcpu = limit_vcpu - current_vcpu_usage
+    available_memory = limit_memory - current_memory_usage
+
+    if (available_vcpu > request.vcpu_asked) and (available_memory > request.memory_asked):
+        return True
+    else:
+        return False
+
+def schedule_job(job: SingleComputation):
+    """Adds job to queue
+
+    Args:
+        job (SingleComputation): The job to be scheduled
+    """
+
+
+    return
+
+def get_user_quota(user_id: str):
+    # GetQuota:
+    #getQuotaResult = requests.get("253.2554.546565.46545/quotas/" + request.user_id) # <-- Need to be change to the internal Cluster IP, when uploaded to Google Cloud
+    getQuotaResult = {"memory": 10, "vCpu" : 15}
+
+    return getQuotaResult
+
+def get_mzn_instance(mzn_id: int):
+    
+
+    return
+
+def get_user_monitor_processes(user_id: str):
+    # Get current used resources for a user:
+    # Need to call the monitor endpoint to see if the user has any jobs running
+    #getMonitorForUserResult = requests.get("232652.2652.484/monitor/processes/"+ request.user_id) # <-- Need to be change to the internal Cluster IP, when uploaded to Google Cloud
+    getMonitorForUserResult = [
+        {'id': 1, 'user_id': 1, 'computation_id': 130, 'vcpu_usage': 2, 'memory_usage': 5}, 
+        {'id': 1, 'user_id': 1, 'computation_id': 131, 'vcpu_usage': 4, 'memory_usage': 3}, 
+        {'id': 1, 'user_id': 1, 'computation_id': 132, 'vcpu_usage': 2, 'memory_usage': 4}
+        ]
+
+    return getMonitorForUserResult
 
 def writeDB(sql_prepared_statement: str, sql_placeholder_values: tuple = ()):
     """Takes a prepared statement with values and writes to database
