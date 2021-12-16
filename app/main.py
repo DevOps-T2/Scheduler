@@ -91,6 +91,7 @@ def test_db():
 
     schedule_job(job)
     print(get_all_user_scheduled_jobs(job.user_id))
+    # delete_scheduled_job("24")
 
 
     return "wrote, read and deleted from database"
@@ -244,6 +245,12 @@ def load_scheduled_job(scheduler_id: int):
     return scheduled_job
 
 def delete_scheduled_job(scheduler_id: int):
+    scheduler_prepared_sql: str = "DELETE FROM scheduler WHERE id = %s"
+    writeDB(scheduler_prepared_sql, (scheduler_id,))
+
+    scheduler_solver_prepared_sql: str = "DELETE FROM scheduler_solver WHERE scheduler_id = %s"
+    writeDB(scheduler_solver_prepared_sql, (scheduler_id,))
+
     return
 
 def get_all_user_scheduled_jobs(user_id: str):
