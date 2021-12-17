@@ -97,17 +97,17 @@ def create_computation(request: LaunchComputationRequest):
     if len(request.solver_ids) > limit_vcpu:
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
                                                     because the requested amount of parallel solvers (%s) 
-                                                    exceeds the user's quota for vCPUs (%s)""" 
+                                                    exceeds the user's vCPU quota (%s)""" 
                                                     % (len(request.solver_ids), limit_vcpu))
     if (request.vcpus > limit_vcpu):
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
                                                     because the requested amount of vCPUs (%s) 
-                                                    exceeds the user's quota for vCPUs (%s)""" 
+                                                    exceeds the user's vCPU quota (%s)""" 
                                                     % (request.vcpus, limit_vcpu))
     if (request.memory > limit_memory):
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
                                                     because the requested amount of memory (%s) 
-                                                    exceeds the user's quota for memory (%s)""" 
+                                                    exceeds the user's memory quota (%s)""" 
                                                     % (request.memory, limit_memory))
 
     # get mzn urls from mzn id
