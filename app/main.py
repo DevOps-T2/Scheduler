@@ -120,6 +120,12 @@ def create_computation(request: CreateComputationRequest):
         schedule_computation(computation)
         return "Computation has been scheduled for launch"
 
+@app.delete("/scheduler/computation/{scheduled_computation_id}") 
+def delete_computation(scheduled_computation_id):
+    delete_scheduled_computation(scheduled_computation_id)
+
+    return "Scheduled computation has been unscheduled"
+
 
 @app.get("/scheduler/computations/{user_id}", response_model=List[ScheduledComputationResponse]) 
 def list_user_computations(user_id: str):
