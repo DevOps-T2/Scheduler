@@ -271,22 +271,18 @@ def get_all_user_scheduled_computations(user_id: str) -> List[ScheduledComputati
     return scheduled_computations
 
 def get_user_quota(user_id: str) -> Dict[int, int]:
-    # GetQuota:
     # getQuotaResult = requests.get(QUOTA_SERVICE_IP + "/quotas/" + user_id)
     getQuotaResult = {"memory": 10, "vcpu" : 15}
 
     return getQuotaResult
 
 def get_mzn_instance(mzn_id: int):
-    # get mzn and dzn urls from mzn_instance table in mzn_data service
     # mzn_instance_response = requests.get(MZN_DATA_SERVICE_IP + "/data/" + mzn_id))
     mzn_instance_response = {"mzn_url": "www.mznurl.com", "dzn_url": "www.dznurl.com"}
 
     return mzn_instance_response
 
 def get_user_monitor_processes(user_id: str):
-    # Get current used resources for a user:
-    # Need to call the monitor endpoint to see if the user has any computations running
     # getMonitorForUserResult = requests.get(MONITOR_SERVICE_IP + "/monitor/processes/"+ user_id)
     getMonitorForUserResult = [
         {'id': 1, 'user_id': 1, 'computation_id': 130, 'vcpu_usage': 2, 'memory_usage': 5}, 
