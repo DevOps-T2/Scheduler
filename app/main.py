@@ -25,14 +25,8 @@ MZN_SERVICE_IP = os.getenv("MZN_SERVICE_IP")
 MZN_DATA_SERVICE_IP = os.getenv("MZN_DATA_SERVICE_IP")
 
 
-# TO DO LIST for this file:
-    # Quning of the computations, is that done in the service or? (if the service handels it, should there be a database connect?) - see line 139, where I think it should be implemented 
-    # Endpoint, that I (Thomas) don't know how works:
-        # Minizin mzn-dispatcher
-        # Solver list
-
-
-# Add endpoint: That allow for Thomas to tell when a computation is finish
+#TODO 
+# Replace dummy data with real requests
 
 # All data that needs to be added to the database
 class ScheduleComputationRequest(BaseModel):
@@ -44,6 +38,7 @@ class ScheduleComputationRequest(BaseModel):
     solver_options: List[str]
     user_id: str # don't know the format that the guid is stored in.
 
+# Same as ScheduleComputationRequest but with the autoincremented id
 class ScheduledComputationResponse(BaseModel):
     id: int
     solver_ids: List[int]
@@ -63,19 +58,13 @@ class CreateComputationRequest(BaseModel):
     solver_options: List[str]
     user_id: str # don't know the format that the guid is stored in.
 
+# Data needed from solverexecution when it notifies about finishing a computaiton
 class FinishComputationMessage(BaseModel):
     user_id: str
     computation_id: str
 
-# Expected results from endpoints used for testing:
-
-# Creates a random string, to be used as a computation ID. This string is NOT unique. Default length 8
-#def id_generator(size=8, chars=string.ascii_uppercase + string.digits):
- #  return ''.join(random.choice(chars) for _ in range(size))
 
 app = FastAPI()
-
-
 @app.post("/scheduler/computation") 
 def create_computation(request: CreateComputationRequest):
     # check if the computation request is ever runnable with the user's quota
