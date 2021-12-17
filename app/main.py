@@ -89,14 +89,26 @@ def test_db():
 
 @app.post("/scheduler/computation") 
 def create_computation(request: LaunchComputationRequest):
-    # check if the computation request is ever runnable with the user's cpu quota
+    # check if the computation request is ever runnable with the user's quota
     user_quota = get_user_quota(request.user_id)
     limit_vcpu = user_quota.get("vcpu")
+    limit_memory = user_quota.get("memory")
+
     if len(request.solver_ids) > limit_vcpu:
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
                                                     because the requested amount of parallel solvers (%s) 
                                                     exceeds the user's quota for vCPUs (%s)""" 
                                                     % (len(request.solver_ids), limit_vcpu))
+    if (request.vcpus > limit_vcpu):
+        raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
+                                                    because the requested amount of vCPUs (%s) 
+                                                    exceeds the user's quota for vCPUs (%s)""" 
+                                                    % (request.vcpus, limit_vcpu))
+    if (request.memory > limit_memory):
+        raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
+                                                    because the requested amount of memory (%s) 
+                                                    exceeds the user's quota for memory (%s)""" 
+                                                    % (request.memory, limit_memory))
 
     # get mzn urls from mzn id
     mzn_data = get_mzn_instance(request.mzn_id)
