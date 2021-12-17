@@ -2,7 +2,7 @@ import os
 from typing import Dict, List
 from fastapi import FastAPI, HTTPException
 import requests
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
@@ -58,6 +58,16 @@ class CreateComputationRequest(BaseModel):
     solver_options: List[str]
     user_id: str # don't know the format that the guid is stored in.
 
+    @validator('vcpus')
+    def check_vcpu_more_than_one(cls, v):
+        if (v < 1):
+            raise ValueError ("vcpus can't be less than 1")
+
+    @validator('memory')
+    def check_memory_more_than_one(cls, v):
+        if (v < 1):
+            raise ValueError ("memory can't be less than 1")
+
 # Data needed from solverexecution when it notifies about finishing a computaiton
 class FinishComputationMessage(BaseModel):
     user_id: str
@@ -103,8 +113,8 @@ def create_computation(request: CreateComputationRequest):
     scheduled_computations: List = get_all_user_scheduled_computations(computation.user_id)
 
     if (len(scheduled_computations) == 0 and user_resources_are_available(computation.user_id, computation.vcpus, computation.memory)):
-        launch_computation(computation)
-        return "Computation has been launched at once"
+        computation_id = launch_computation(computation)
+        return "Computation has been launched immediately with computation id: %s" % computation_id
     else:
         schedule_computation(computation)
         return "Computation has been scheduled for launch"
@@ -113,8 +123,7 @@ def create_computation(request: CreateComputationRequest):
 def delete_computation(scheduled_computation_id):
     delete_scheduled_computation(scheduled_computation_id)
 
-    return "Scheduled computation has been unscheduled"
-
+    return "Scheduled computation '%s' has been unscheduled" % scheduled_computation_id
 
 @app.get("/scheduler/computations/{user_id}", response_model=List[ScheduledComputationResponse]) 
 def list_user_computations(user_id: str):
@@ -124,12 +133,13 @@ def list_user_computations(user_id: str):
 @app.delete("/scheduler/computations/{user_id}") 
 def delete_user_computations(user_id: str):
     scheduled_computations = get_all_user_scheduled_computations(user_id)
+    len(scheduled_computations)
 
     for scheduled_computation in scheduled_computations:
         scheduled_computation_id = scheduled_computation.id
         delete_scheduled_computation(scheduled_computation_id)
 
-    return "Deleted all scheduled computations associated with user"
+    return "Deleted all (%s) scheduled computations associated with user %s" % (len(scheduled_computations), user_id)
 
 @app.post("/scheduler/finish_computation")
 def finish_computation(request: FinishComputationMessage):
@@ -140,7 +150,7 @@ def finish_computation(request: FinishComputationMessage):
         request (FinishComputationMessage): a computation id and a user id
     """
     delete_process_response = "" #requests.delete(MONITOR_SERVICE_IP + '/monitor/process/' + request.computation_id)
-    launch_scheduled_computation(request.user_id)
+    return launch_scheduled_computation(request.user_id)
 
 
 # Checks to see if the resources that a user asks for is available
@@ -180,12 +190,12 @@ def launch_scheduled_computation(user_id):
     scheduled_computations = get_all_user_scheduled_computations(user_id)
 
     if (len(scheduled_computations) == 0):
-        return
+        return "User %s has not scheduled computations" % user_id
 
     oldest_scheduled_computation = min(scheduled_computations, key=lambda x: x.id)
 
     delete_scheduled_computation(oldest_scheduled_computation.id)
-    launch_computation(oldest_scheduled_computation)
+    return launch_computation(oldest_scheduled_computation)
 
 def launch_computation(computation: ScheduleComputationRequest):
     """Contact solver execution service and launch an actual execution / computation
@@ -199,7 +209,12 @@ def launch_computation(computation: ScheduleComputationRequest):
     # Start minizinc solver: 
     solver_execution_request = {'model_url': computation.mzn_url, 'data_url': computation.dzn_url, 'solvers': computation.solver_ids}
 
-    solver_execution_response = requests.post(MZN_SERVICE_IP + '/run', json = solver_execution_request) 
+    solver_execution_response = None
+    try:
+        solver_execution_response = requests.post(MZN_SERVICE_IP + '/run', json = solver_execution_request)     
+    except Error as e:
+        return e
+    
     solver_execution_response_body = solver_execution_response.json()
     computation_id = solver_execution_response_body.get("computation_id")
 
@@ -207,9 +222,13 @@ def launch_computation(computation: ScheduleComputationRequest):
     # The request body
     monitor_request = {'user_id': computation.user_id, 'computation_id': computation_id, 'vcpu_usage': computation.vcpus, 'memory_usage': computation.memory}
 
-    monitor_response = requests.post(MONITOR_SERVICE_IP + '/monitor/process/', json = monitor_request)
+    monitor_response = None
+    try:
+        monitor_response = requests.post(MONITOR_SERVICE_IP + '/monitor/process/', json = monitor_request)
+    except Error as e:
+        return e
 
-    return computation_id
+    return {"computation_id": computation_id}
     
 
 def schedule_computation(computation: ScheduleComputationRequest):
@@ -233,29 +252,41 @@ def load_scheduled_computation(scheduledcomputation_id: int) -> ScheduledComputa
     # get all solver ids and save in a list
     scheduledcomputation_solver_prepared_sql: str = "SELECT solver_id FROM scheduledcomputation_solver WHERE scheduledcomputation_id = %s" 
     solver_id_tuples = readDB(scheduledcomputation_solver_prepared_sql, (scheduledcomputation_id,))
+
+    if (len(solver_id_tuples) == 0):
+        return None
+
     solver_ids = [id_tuple[0] for id_tuple in solver_id_tuples]
 
     # get the rest of the data and save it in an object along with solver ids
     scheduledcomputation_prepared_sql: str = "SELECT id, user_id, memory_usage, vcpu_usage, mzn_url, dzn_url FROM scheduledcomputation WHERE id = %s"
-    result = readDB(scheduledcomputation_prepared_sql, (scheduledcomputation_id,))[0]
+    query_result = readDB(scheduledcomputation_prepared_sql, (scheduledcomputation_id,))
+    if (len(query_result) == 0):
+        return None
 
-    scheduled_computation = ScheduledComputationResponse(id = result[0], 
-                                    user_id = result[1], 
-                                    memory = result[2], 
-                                    vcpus = result[3],
-                                    mzn_url = result[4],
-                                    dzn_url = result[5],
+    scheduled_computation = query_result[0]
+    scheduled_computation = ScheduledComputationResponse(id = scheduled_computation[0], 
+                                    user_id = scheduled_computation[1], 
+                                    memory = scheduled_computation[2], 
+                                    vcpus = scheduled_computation[3],
+                                    mzn_url = scheduled_computation[4],
+                                    dzn_url = scheduled_computation[5],
                                     solver_ids=solver_ids,
                                     solver_options = [])
 
     return scheduled_computation
 
-def delete_scheduled_computation(scheduledcomputation_id: int):
+def delete_scheduled_computation(scheduled_computation_id: int):
+    scheduled_computation = load_scheduled_computation(scheduled_computation_id)
+    if (scheduled_computation == None):
+        HTTPException(
+            status_code=404, detail="A process with scheduled_computation_id = '%s' does not exist." % scheduled_computation_id)
+
     scheduledcomputation_prepared_sql: str = "DELETE FROM scheduledcomputation WHERE id = %s"
-    writeDB(scheduledcomputation_prepared_sql, (scheduledcomputation_id,))
+    writeDB(scheduledcomputation_prepared_sql, (scheduled_computation_id,))
 
     scheduledcomputation_solver_prepared_sql: str = "DELETE FROM scheduledcomputation_solver WHERE scheduledcomputation_id = %s"
-    writeDB(scheduledcomputation_solver_prepared_sql, (scheduledcomputation_id,))
+    writeDB(scheduledcomputation_solver_prepared_sql, (scheduled_computation_id,))
 
 def get_all_user_scheduled_computations(user_id: str) -> List[ScheduledComputationResponse]:
     scheduledcomputation_prepared_sql: str = "SELECT id FROM scheduledcomputation WHERE user_id = %s"
