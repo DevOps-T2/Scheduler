@@ -135,9 +135,9 @@ def list_user_computations(user_id: str):
 @app.delete("/scheduler/computations/{user_id}") 
 def delete_user_computations(user_id: str):
     scheduled_computations = get_all_user_scheduled_computations(user_id)
-    
+
     for scheduled_computation in scheduled_computations:
-        scheduled_computation_id = scheduled_computation.get("id")
+        scheduled_computation_id = scheduled_computation.id
         delete_scheduled_computation(scheduled_computation_id)
 
     return "Deleted all scheduled computations associated with user"
@@ -148,9 +148,9 @@ def finish_computation(request: FinishComputationMessage):
     Deletes the process from the monitor service and launches the next scheduled computation
 
     Args:
-        request (FinishComputationRequest): a computation id and a user id
+        request (FinishComputationMessage): a computation id and a user id
     """
-    delete_process_response = requests.delete(MONITOR_SERVICE_IP + '/monitor/process/' + request.computation_id)
+    delete_process_response = "" #requests.delete(MONITOR_SERVICE_IP + '/monitor/process/' + request.computation_id)
     launch_scheduled_computation(request.user_id)
 
 
@@ -167,10 +167,6 @@ def user_resources_are_available(user_id, vcpu_requested, memory_requested) -> b
 
     # A list of monitored processes
     getMonitorForUserResult = get_user_monitor_processes(user_id)
-
-    # Checks if the current user, has any computations running
-    if len(getMonitorForUserResult) == 0:
-        return
 
     #Calculates the current_vcpu_usage and currrent_memory_usage
     if len(getMonitorForUserResult) > 0:
@@ -197,9 +193,9 @@ def launch_scheduled_computation(user_id):
     if (len(scheduled_computations) == 0):
         return
 
-    oldest_scheduled_computation = min(scheduled_computations, key=lambda dict: dict["id"])
+    oldest_scheduled_computation = min(scheduled_computations, key=lambda x: x.id)
 
-    delete_scheduled_computation(oldest_scheduled_computation.get("id"))
+    delete_scheduled_computation(oldest_scheduled_computation.id)
     launch_computation(oldest_scheduled_computation)
 
 def launch_computation(computation: ScheduleComputationRequest):
@@ -224,11 +220,6 @@ def launch_computation(computation: ScheduleComputationRequest):
 
     monitor_response = requests.post(MONITOR_SERVICE_IP + '/monitor/process/', json = monitor_request)
 
-    if monitor_response.status_code == 200:
-        print("computation add to the monitor service")
-    else:
-        print("computation NOT add to monitor service")
-
     return computation_id
     
 
@@ -238,26 +229,26 @@ def schedule_computation(computation: ScheduleComputationRequest):
     Args:
         computation (Computation): The computation to be scheduled
     """
-    scheduler_prepared_sql: str = "INSERT INTO scheduler (user_id, memory_usage, vcpu_usage, mzn_url, dzn_url) values (%s, %s, %s, %s, %s)"
-    schduler_values = (computation.user_id, computation.memory, computation.vcpus, computation.mzn_url, computation.dzn_url)
+    scheduledcomputation_prepared_sql: str = "INSERT INTO scheduledcomputation (user_id, memory_usage, vcpu_usage, mzn_url, dzn_url) values (%s, %s, %s, %s, %s)"
+    scheduledcomputation_values = (computation.user_id, computation.memory, computation.vcpus, computation.mzn_url, computation.dzn_url)
 
-    # write data to scheduler table and return the auto incremented id 
-    inserted_row_scheduler_id = writeDB(scheduler_prepared_sql, schduler_values)
+    # write data to scheduledcomputation table and return the auto incremented id 
+    inserted_row_scheduledcomputation_id = writeDB(scheduledcomputation_prepared_sql, scheduledcomputation_values)
 
-    # write all the solver_ids to the scheduler_solver table
-    scheduler_solver_prepared_sql: str = "INSERT INTO scheduler_solver (scheduler_id, solver_id) values (%s, %s)"
+    # write all the solver_ids to the scheduledcomputation_solver table
+    scheduledcomputation_solver_prepared_sql: str = "INSERT INTO scheduledcomputation_solver (scheduledcomputation_id, solver_id) values (%s, %s)"
     for solver_id in computation.solver_ids:
-        writeDB(scheduler_solver_prepared_sql, (inserted_row_scheduler_id, solver_id))
+        writeDB(scheduledcomputation_solver_prepared_sql, (inserted_row_scheduledcomputation_id, solver_id))
 
-def load_scheduled_computation(scheduler_id: int) -> ScheduledComputationResponse:
+def load_scheduled_computation(scheduledcomputation_id: int) -> ScheduledComputationResponse:
     # get all solver ids and save in a list
-    scheduler_solver_prepared_sql: str = "SELECT solver_id FROM scheduler_solver WHERE scheduler_id = %s" 
-    solver_id_tuples = readDB(scheduler_solver_prepared_sql, (scheduler_id,))
+    scheduledcomputation_solver_prepared_sql: str = "SELECT solver_id FROM scheduledcomputation_solver WHERE scheduledcomputation_id = %s" 
+    solver_id_tuples = readDB(scheduledcomputation_solver_prepared_sql, (scheduledcomputation_id,))
     solver_ids = [id_tuple[0] for id_tuple in solver_id_tuples]
 
     # get the rest of the data and save it in an object along with solver ids
-    scheduler_prepared_sql: str = "SELECT id, user_id, memory_usage, vcpu_usage, mzn_url, dzn_url FROM scheduler WHERE id = %s"
-    result = readDB(scheduler_prepared_sql, (scheduler_id,))[0]
+    scheduledcomputation_prepared_sql: str = "SELECT id, user_id, memory_usage, vcpu_usage, mzn_url, dzn_url FROM scheduledcomputation WHERE id = %s"
+    result = readDB(scheduledcomputation_prepared_sql, (scheduledcomputation_id,))[0]
 
     scheduled_computation = ScheduledComputationResponse(id = result[0], 
                                     user_id = result[1], 
@@ -270,23 +261,23 @@ def load_scheduled_computation(scheduler_id: int) -> ScheduledComputationRespons
 
     return scheduled_computation
 
-def delete_scheduled_computation(scheduler_id: int):
-    scheduler_prepared_sql: str = "DELETE FROM scheduler WHERE id = %s"
-    writeDB(scheduler_prepared_sql, (scheduler_id,))
+def delete_scheduled_computation(scheduledcomputation_id: int):
+    scheduledcomputation_prepared_sql: str = "DELETE FROM scheduledcomputation WHERE id = %s"
+    writeDB(scheduledcomputation_prepared_sql, (scheduledcomputation_id,))
 
-    scheduler_solver_prepared_sql: str = "DELETE FROM scheduler_solver WHERE scheduler_id = %s"
-    writeDB(scheduler_solver_prepared_sql, (scheduler_id,))
+    scheduledcomputation_solver_prepared_sql: str = "DELETE FROM scheduledcomputation_solver WHERE scheduledcomputation_id = %s"
+    writeDB(scheduledcomputation_solver_prepared_sql, (scheduledcomputation_id,))
 
 def get_all_user_scheduled_computations(user_id: str) -> List[ScheduledComputationResponse]:
-    scheduler_prepared_sql: str = "SELECT id FROM scheduler WHERE user_id = %s"
-    scheduler_values = (user_id,)
+    scheduledcomputation_prepared_sql: str = "SELECT id FROM scheduledcomputation WHERE user_id = %s"
+    scheduledcomputation_values = (user_id,)
 
-    scheduler_id_tuples: List[tuple] = readDB(scheduler_prepared_sql, scheduler_values)
-    scheduler_ids = [id_tuple[0] for id_tuple in scheduler_id_tuples] # map list of tuples to list of ints
+    scheduledcomputation_id_tuples: List[tuple] = readDB(scheduledcomputation_prepared_sql, scheduledcomputation_values)
+    scheduledcomputation_ids = [id_tuple[0] for id_tuple in scheduledcomputation_id_tuples] # map list of tuples to list of ints
 
     scheduled_computations = []
-    for scheduler_id in scheduler_ids:
-        scheduled_computations.append(load_scheduled_computation(scheduler_id))
+    for scheduledcomputation_id in scheduledcomputation_ids:
+        scheduled_computations.append(load_scheduled_computation(scheduledcomputation_id))
 
     return scheduled_computations
 
