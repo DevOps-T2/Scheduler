@@ -304,29 +304,30 @@ def get_all_user_scheduled_computations(user_id: str) -> List[ScheduledComputati
     return scheduled_computations
 
 def get_user_quota(user_id: str) -> Dict[int, int]:
-    # getQuotaResult = requests.get(QUOTA_SERVICE_IP + "/quotas/" + user_id)
-    getQuotaResult = {"memory": 10, "vcpu" : 15}
+    response = requests.get("%s/quotas/%s" % (QUOTA_SERVICE_IP, user_id))
 
-    return getQuotaResult
+    print(response)
+    quota = response.json()
+    print("Quota: ", quota)
+
+    return quota
 
 def get_mzn_url(user_id, file_id):
     response = requests.get("%s/api/minizinc/%s/%s" % (MZN_DATA_SERVICE_IP, user_id, file_id))
 
     print(response)
     url = response.json()
-    print(url)
+    print("url: " +url)
 
     return url
 
 def get_user_monitor_processes(user_id: str):
-    # getMonitorForUserResult = requests.get(MONITOR_SERVICE_IP + "/monitor/processes/"+ user_id)
-    getMonitorForUserResult = [
-        {'id': 1, 'user_id': 1, 'computation_id': 130, 'vcpu_usage': 2, 'memory_usage': 5}, 
-        {'id': 1, 'user_id': 1, 'computation_id': 131, 'vcpu_usage': 4, 'memory_usage': 3}, 
-        {'id': 1, 'user_id': 1, 'computation_id': 132, 'vcpu_usage': 2, 'memory_usage': 4}
-        ]
-
-    return getMonitorForUserResult
+    response = requests.get("%s/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id))
+    print(response)
+    user_processes = response.json()
+    print("monitor: ", user_processes)
+    
+    return user_processes
 
 def writeDB(sql_prepared_statement: str, sql_placeholder_values: tuple = ()):
     """Takes a prepared statement with values and writes to database
@@ -384,6 +385,3 @@ def readDB(sql_prepared_statement: str, sql_placeholder_values: tuple = ()):
     finally:
         cursor.close()
         connection.close()
-
-
-
