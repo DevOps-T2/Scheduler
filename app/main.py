@@ -74,7 +74,7 @@ class FinishComputationMessage(BaseModel):
 
 
 app = FastAPI()
-@app.post("/scheduler/computation") 
+@app.post("/api/scheduler/computation") 
 def create_computation(request: ScheduleComputationRequest):
     # check if the computation request is ever runnable with the user's quota
     user_quota = get_user_quota(request.user_id)
@@ -115,18 +115,18 @@ def create_computation(request: ScheduleComputationRequest):
         schedule_computation(computation)
         return "Computation has been scheduled for launch"
 
-@app.delete("/scheduler/computation/{scheduled_computation_id}") 
+@app.delete("/api/scheduler/computation/{scheduled_computation_id}") 
 def delete_computation(scheduled_computation_id):
     delete_scheduled_computation(scheduled_computation_id)
 
     return "Scheduled computation '%s' has been unscheduled" % scheduled_computation_id
 
-@app.get("/scheduler/computations/{user_id}", response_model=List[ScheduledComputationResponse]) 
+@app.get("/api/scheduler/computations/{user_id}", response_model=List[ScheduledComputationResponse]) 
 def list_user_computations(user_id: str):
     scheduled_computations = get_all_user_scheduled_computations(user_id)
     return scheduled_computations
 
-@app.delete("/scheduler/computations/{user_id}") 
+@app.delete("/api/scheduler/computations/{user_id}") 
 def delete_user_computations(user_id: str):
     scheduled_computations = get_all_user_scheduled_computations(user_id)
     len(scheduled_computations)
@@ -137,7 +137,7 @@ def delete_user_computations(user_id: str):
 
     return "Deleted all (%s) scheduled computations associated with user %s" % (len(scheduled_computations), user_id)
 
-@app.post("/scheduler/finish_computation")
+@app.post("/api/scheduler/finish_computation")
 def finish_computation(request: FinishComputationMessage):
     """Takes a message from the solver execution service, singalling an execution has terminated
     Deletes the process from the monitor service and launches the next scheduled computation
