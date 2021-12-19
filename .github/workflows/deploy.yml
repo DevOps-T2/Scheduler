@@ -30,6 +30,11 @@ env:
   DATABASE_USER: ${{ secrets.DATABASE_USER }}
   DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
 
+  MONITOR_SERVICE_IP: ${{ secrets.MONITOR_SERVICE_IP }}
+  QUOTA_SERVICE_IP: ${{ secrets.QUOTA_SERVICE_IP }}
+  MZN_SERVICE_IP: ${{ secrets.MZN_SERVICE_IP }}
+  MZN_DATA_SERVICE_IP: ${{ secrets.MZN_DATA_SERVICE_IP }}
+
 jobs:
   setup-build-publish-deploy:
     name: Setup, Build, Publish, and Deploy
@@ -66,6 +71,10 @@ jobs:
         echo DATABASE_HOST_WRITE=$DATABASE_HOST_WRITE >> .env
         echo DATABASE_USER=$DATABASE_USER >> .env
         echo DATABASE_PASSWORD=$DATABASE_PASSWORD >> .env
+        echo MONITOR_SERVICE_IP=$MONITOR_SERVICE_IP >> .env
+        echo QUOTA_SERVICE_IP=$QUOTA_SERVICE_IP >> .env
+        echo MZN_SERVICE_IP=$MZN_SERVICE_IP >> .env
+        echo MZN_DATA_SERVICE_IP=$MZN_DATA_SERVICE_IP >> .env
         cat .env
     # Build the Docker image
     - name: Build
