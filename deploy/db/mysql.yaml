@@ -11,6 +11,12 @@ data:
     PRIMARY KEY (id),
     UNIQUE KEY id_UNIQUE (id)
     );
+
+    CREATE TABLE IF NOT EXISTS Default.scheduledcomputation_solver (
+    scheduledcomputation_id INTEGER NOT NULL,
+    solver_id INTEGER NOT NULL,
+    PRIMARY KEY (solver_id, scheduledcomputation_id)
+    );
 kind: ConfigMap
 metadata:
   labels:
