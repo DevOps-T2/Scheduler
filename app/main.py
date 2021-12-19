@@ -6,8 +6,6 @@ from pydantic import BaseModel, validator
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
-import string
-import random
 
 load_dotenv()
 
