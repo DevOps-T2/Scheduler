@@ -1,8 +1,8 @@
 import os
 from typing import Dict, List
 from fastapi import FastAPI, HTTPException, APIRouter
-import requests
 from pydantic import BaseModel, validator
+import requests
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
@@ -153,7 +153,7 @@ def finish_computation(request: FinishComputationMessage):
     delete_process_response = "" #requests.delete(MONITOR_SERVICE_IP + '/monitor/process/' + request.computation_id)
     return launch_scheduled_computation(request.user_id)
 
-router.include_router(router)
+app.include_router(router)
 
 # Checks to see if the resources that a user asks for is available
 def user_resources_are_available(user_id, vcpu_requested, memory_requested) -> bool:

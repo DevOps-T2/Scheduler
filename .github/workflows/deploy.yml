@@ -29,7 +29,6 @@ env:
   DATABASE_HOST_WRITE: ${{ secrets.DATABASE_HOST_WRITE }}
   DATABASE_USER: ${{ secrets.DATABASE_USER }}
   DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-
   MONITOR_SERVICE_IP: ${{ secrets.MONITOR_SERVICE_IP }}
   QUOTA_SERVICE_IP: ${{ secrets.QUOTA_SERVICE_IP }}
   MZN_SERVICE_IP: ${{ secrets.MZN_SERVICE_IP }}
@@ -76,6 +75,7 @@ jobs:
         echo MZN_SERVICE_IP=$MZN_SERVICE_IP >> .env
         echo MZN_DATA_SERVICE_IP=$MZN_DATA_SERVICE_IP >> .env
         cat .env
+        
     # Build the Docker image
     - name: Build
       run: |-
