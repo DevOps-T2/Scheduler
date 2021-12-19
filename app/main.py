@@ -1,6 +1,6 @@
 import os
 from typing import Dict, List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 import requests
 from pydantic import BaseModel, validator
 import mysql.connector
@@ -23,8 +23,6 @@ MZN_SERVICE_IP = os.getenv("MZN_SERVICE_IP")
 MZN_DATA_SERVICE_IP = os.getenv("MZN_DATA_SERVICE_IP")
 
 
-#TODO 
-# Replace dummy data with real requests
 
 # All data that needs to be added to the database
 class ScheduleComputationRequest(BaseModel):
@@ -74,7 +72,10 @@ class FinishComputationMessage(BaseModel):
 
 
 app = FastAPI()
-@app.post("/api/scheduler/computation") 
+router = APIRouter()
+
+@router.post("/api/scheduler/computation") 
+@router.post("/api/scheduler/computation/", include_in_schema=False)
 def create_computation(request: ScheduleComputationRequest):
     # check if the computation request is ever runnable with the user's quota
     user_quota = get_user_quota(request.user_id)
@@ -115,18 +116,21 @@ def create_computation(request: ScheduleComputationRequest):
         schedule_computation(computation)
         return "Computation has been scheduled for launch"
 
-@app.delete("/api/scheduler/computation/{scheduled_computation_id}") 
+@router.delete("/api/scheduler/computation/{scheduled_computation_id}")
+@router.delete("/api/scheduler/computation/{scheduled_computation_id}/", include_in_schema=False) 
 def delete_computation(scheduled_computation_id):
     delete_scheduled_computation(scheduled_computation_id)
 
     return "Scheduled computation '%s' has been unscheduled" % scheduled_computation_id
 
-@app.get("/api/scheduler/computations/{user_id}", response_model=List[ScheduledComputationResponse]) 
+@router.get("/api/scheduler/computations/{user_id}", response_model=List[ScheduledComputationResponse])
+@router.get("/api/scheduler/computations/{user_id}/", response_model=List[ScheduledComputationResponse], include_in_schema=False) 
 def list_user_computations(user_id: str):
     scheduled_computations = get_all_user_scheduled_computations(user_id)
     return scheduled_computations
 
-@app.delete("/api/scheduler/computations/{user_id}") 
+@router.delete("/api/scheduler/computations/{user_id}")
+@router.delete("/api/scheduler/computations/{user_id}/", include_in_schema=False) 
 def delete_user_computations(user_id: str):
     scheduled_computations = get_all_user_scheduled_computations(user_id)
     len(scheduled_computations)
@@ -137,7 +141,8 @@ def delete_user_computations(user_id: str):
 
     return "Deleted all (%s) scheduled computations associated with user %s" % (len(scheduled_computations), user_id)
 
-@app.post("/api/scheduler/finish_computation")
+@router.post("/api/scheduler/finish_computation")
+@router.post("/api/scheduler/finish_computation/", include_in_schema=False)
 def finish_computation(request: FinishComputationMessage):
     """Takes a message from the solver execution service, singalling an execution has terminated
     Deletes the process from the monitor service and launches the next scheduled computation
@@ -148,6 +153,7 @@ def finish_computation(request: FinishComputationMessage):
     delete_process_response = "" #requests.delete(MONITOR_SERVICE_IP + '/monitor/process/' + request.computation_id)
     return launch_scheduled_computation(request.user_id)
 
+router.include_router(router)
 
 # Checks to see if the resources that a user asks for is available
 def user_resources_are_available(user_id, vcpu_requested, memory_requested) -> bool:
