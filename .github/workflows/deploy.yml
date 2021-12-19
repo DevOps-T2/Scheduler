@@ -33,6 +33,7 @@ env:
   QUOTA_SERVICE_IP: ${{ secrets.QUOTA_SERVICE_IP }}
   MZN_SERVICE_IP: ${{ secrets.MZN_SERVICE_IP }}
   MZN_DATA_SERVICE_IP: ${{ secrets.MZN_DATA_SERVICE_IP }}
+  SOLVERS_SERVICE_IP: ${{ secrets.SOLVERS_SERVICE_IP }}
 
 jobs:
   setup-build-publish-deploy:
@@ -74,8 +75,9 @@ jobs:
         echo QUOTA_SERVICE_IP=$QUOTA_SERVICE_IP >> .env
         echo MZN_SERVICE_IP=$MZN_SERVICE_IP >> .env
         echo MZN_DATA_SERVICE_IP=$MZN_DATA_SERVICE_IP >> .env
+        echo SOLVERS_SERVICE_IP=$SOLVERS_SERVICE_IP >> .env
         cat .env
-        
+
     # Build the Docker image
     - name: Build
       run: |-

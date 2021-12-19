@@ -21,6 +21,7 @@ MONITOR_SERVICE_IP = os.getenv("MONITOR_SERVICE_IP")
 QUOTA_SERVICE_IP = os.getenv("QUOTA_SERVICE_IP")
 MZN_SERVICE_IP = os.getenv("MZN_SERVICE_IP")
 MZN_DATA_SERVICE_IP = os.getenv("MZN_DATA_SERVICE_IP")
+SOLVERS_SERVICE_IP = os.getenv("SOLVERS_SERVICE_IP")
 
 
 
@@ -70,6 +71,10 @@ class FinishComputationMessage(BaseModel):
     user_id: str
     computation_id: str
 
+class Solver(BaseModel):
+    image: str
+    cpu_request: int
+    mem_request: int
 
 app = FastAPI()
 router = APIRouter()
@@ -209,12 +214,20 @@ def launch_computation(computation: ScheduleComputationRequest):
         [type]: [description]
     """
 
+    # get urls by file_id
     mzn_url = get_mzn_url(computation.user_id, computation.mzn_file_id)
     dzn_url = get_mzn_url(computation.user_id, computation.dzn_file_id)
 
-    # Start minizinc solver: 
-    solver_execution_request = {'model_url': mzn_url, 'data_url': dzn_url, 'solvers': computation.solver_ids}
+    # construct solver objects (calculate resource fractions and get solver image from solver image id)
+    solvers = []
+    for solver_id in computation.solver_ids:
+        solver_image = get_solver_image(solver_id)
+        vcpu_fraction = int(computation.vcpus / len(computation.solver_ids))
+        memory_fraction = int(computation.memory / len(computation.solver_ids))
+        solvers.append(Solver(image = solver_image, cpu_request = vcpu_fraction, memory = memory_fraction))
 
+    # Start minizinc solver: 
+    solver_execution_request = {'model_url': mzn_url, 'data_url': dzn_url, 'solvers': solvers}
     solver_execution_response = None
     try:
         solver_execution_response = requests.post("http://" + MZN_SERVICE_IP + '/run', json = solver_execution_request)     
@@ -225,7 +238,6 @@ def launch_computation(computation: ScheduleComputationRequest):
     computation_id = solver_execution_response_body.get("computation_id")
 
     # Post the computation to the monitor Service: 
-    # The request body
     monitor_request = {'user_id': computation.user_id, 'computation_id': computation_id, 'vcpu_usage': computation.vcpus, 'memory_usage': computation.memory}
 
     monitor_response = None
@@ -324,6 +336,15 @@ def get_mzn_url(user_id, file_id):
     print("url: " +url)
 
     return url
+
+def get_solver_image(solver_id):
+    response = requests.get("http://%s/api/solvers/%s" % (SOLVERS_SERVICE_IP, solver_id))
+
+    print(response)
+    solver = response.json()
+    print("url: " + solver)
+
+    return solver
 
 def get_user_monitor_processes(user_id: str):
     response = requests.get("http://%s/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id))
