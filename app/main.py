@@ -217,7 +217,7 @@ def launch_computation(computation: ScheduleComputationRequest):
 
     solver_execution_response = None
     try:
-        solver_execution_response = requests.post(MZN_SERVICE_IP + '/run', json = solver_execution_request)     
+        solver_execution_response = requests.post("http://" + MZN_SERVICE_IP + '/run', json = solver_execution_request)     
     except Error as e:
         return e
     
@@ -230,7 +230,7 @@ def launch_computation(computation: ScheduleComputationRequest):
 
     monitor_response = None
     try:
-        monitor_response = requests.post(MONITOR_SERVICE_IP + '/monitor/process/', json = monitor_request)
+        monitor_response = requests.post("http://" + MONITOR_SERVICE_IP + '/monitor/process/', json = monitor_request)
     except Error as e:
         return e
 
@@ -308,7 +308,7 @@ def get_all_user_scheduled_computations(user_id: str) -> List[ScheduledComputati
     return scheduled_computations
 
 def get_user_quota(user_id: str) -> Dict[int, int]:
-    response = requests.get("%s/quotas/%s" % (QUOTA_SERVICE_IP, user_id))
+    response = requests.get("http://%s/quotas/%s" % (QUOTA_SERVICE_IP, user_id))
 
     print(response)
     quota = response.json()
@@ -317,7 +317,7 @@ def get_user_quota(user_id: str) -> Dict[int, int]:
     return quota
 
 def get_mzn_url(user_id, file_id):
-    response = requests.get("%s/api/minizinc/%s/%s" % (MZN_DATA_SERVICE_IP, user_id, file_id))
+    response = requests.get("http://%s/api/minizinc/%s/%s" % (MZN_DATA_SERVICE_IP, user_id, file_id))
 
     print(response)
     url = response.json()
@@ -326,7 +326,7 @@ def get_mzn_url(user_id, file_id):
     return url
 
 def get_user_monitor_processes(user_id: str):
-    response = requests.get("%s/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id))
+    response = requests.get("http://%s/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id))
     print(response)
     user_processes = response.json()
     print("monitor: ", user_processes)
