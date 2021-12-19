@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, APIRouter
 from pydantic import BaseModel, validator
 import requests
@@ -29,10 +29,9 @@ SOLVERS_SERVICE_IP = os.getenv("SOLVERS_SERVICE_IP")
 class ScheduleComputationRequest(BaseModel):
     solver_ids: List[int]
     mzn_file_id: str #The URL to that point to where the minizin model file is stored. 
-    dzn_file_id: str #The URL that points to where the minizin data fil is stored.
+    dzn_file_id: Optional[str] #The URL that points to where the minizin data fil is stored.
     vcpus: int #The amount of Vcpu resources that this computation should have
     memory: int #The amout of memory resources that this computation should have
-    solver_options: List[str]
     user_id: str # don't know the format that the guid is stored in.
 
     @validator('vcpus')
@@ -53,7 +52,6 @@ class ScheduledComputationResponse(BaseModel):
     dzn_file_id: str #The file id used to create mzn file url 
     vcpus: int #The amount of Vcpu resources that this computation should have
     memory: int #The amout of memory resources that this computation should have
-    solver_options: List[str]
     user_id: str # don't know the format that the guid is stored in.
 
 # model for launching a computation. mzn attributes are now urls, not ids
@@ -63,7 +61,6 @@ class LaunchComputationResponse(BaseModel):
     dzn_file_url: str #The URL that points to where the minizin data fil is stored.
     vcpus: int #The amount of Vcpu resources that this computation should have
     memory: int #The amout of memory resources that this computation should have
-    solver_options: List[str]
     user_id: str # don't know the format that the guid is stored in.
 
 # Data needed from solverexecution when it notifies about finishing a computaiton
@@ -105,7 +102,6 @@ def create_computation(request: ScheduleComputationRequest):
 
     # create a computation object with both mzn/dzn urls and the request data
     computation = ScheduleComputationRequest(solver_ids = request.solver_ids, 
-                            solver_options = request.solver_options, 
                             mzn_file_id = request.mzn_file_id, 
                             dzn_file_id = request.dzn_file_id, 
                             user_id = request.user_id, 
@@ -289,8 +285,7 @@ def load_scheduled_computation(scheduledcomputation_id: int) -> ScheduledComputa
                                     vcpus = scheduled_computation[3],
                                     mzn_file_id = scheduled_computation[4],
                                     dzn_file_id = scheduled_computation[5],
-                                    solver_ids=solver_ids,
-                                    solver_options = [])
+                                    solver_ids=solver_ids)
 
     return scheduled_computation
 
