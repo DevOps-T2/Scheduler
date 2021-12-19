@@ -31,28 +31,8 @@ MZN_DATA_SERVICE_IP = os.getenv("MZN_DATA_SERVICE_IP")
 # All data that needs to be added to the database
 class ScheduleComputationRequest(BaseModel):
     solver_ids: List[int]
-    mzn_url: str #The URL to that point to where the minizin model file is stored. 
-    dzn_url: str #The URL that points to where the minizin data fil is stored.
-    vcpus: int #The amount of Vcpu resources that this computation should have
-    memory: int #The amout of memory resources that this computation should have
-    solver_options: List[str]
-    user_id: str # don't know the format that the guid is stored in.
-
-# Same as ScheduleComputationRequest but with the autoincremented id
-class ScheduledComputationResponse(BaseModel):
-    id: int
-    solver_ids: List[int]
-    mzn_url: str #The URL to that point to where the minizin model file is stored. 
-    dzn_url: str #The URL that points to where the minizin data fil is stored.
-    vcpus: int #The amount of Vcpu resources that this computation should have
-    memory: int #The amout of memory resources that this computation should have
-    solver_options: List[str]
-    user_id: str # don't know the format that the guid is stored in.
-
-# Request schema for when wanting to launch computation
-class CreateComputationRequest(BaseModel):
-    solver_ids: List[int]
-    mzn_id: str #The id of a minizinc instance. Pointing to a database row that includes both mzn and dzn urls
+    mzn_file_id: str #The URL to that point to where the minizin model file is stored. 
+    dzn_file_id: str #The URL that points to where the minizin data fil is stored.
     vcpus: int #The amount of Vcpu resources that this computation should have
     memory: int #The amout of memory resources that this computation should have
     solver_options: List[str]
@@ -68,6 +48,27 @@ class CreateComputationRequest(BaseModel):
         if (v < 1):
             raise ValueError ("memory can't be less than 1")
 
+# Same as ScheduleComputationRequest but with the autoincremented id
+class ScheduledComputationResponse(BaseModel):
+    id: int
+    solver_ids: List[int]
+    mzn_file_id: str #The file id used to create dzn file url 
+    dzn_file_id: str #The file id used to create mzn file url 
+    vcpus: int #The amount of Vcpu resources that this computation should have
+    memory: int #The amout of memory resources that this computation should have
+    solver_options: List[str]
+    user_id: str # don't know the format that the guid is stored in.
+
+# model for launching a computation. mzn attributes are now urls, not ids
+class LaunchComputationResponse(BaseModel):
+    solver_ids: List[int]
+    mzn_file_url: str #The URL to that point to where the minizin model file is stored. 
+    dzn_file_url: str #The URL that points to where the minizin data fil is stored.
+    vcpus: int #The amount of Vcpu resources that this computation should have
+    memory: int #The amout of memory resources that this computation should have
+    solver_options: List[str]
+    user_id: str # don't know the format that the guid is stored in.
+
 # Data needed from solverexecution when it notifies about finishing a computaiton
 class FinishComputationMessage(BaseModel):
     user_id: str
@@ -76,7 +77,7 @@ class FinishComputationMessage(BaseModel):
 
 app = FastAPI()
 @app.post("/scheduler/computation") 
-def create_computation(request: CreateComputationRequest):
+def create_computation(request: ScheduleComputationRequest):
     # check if the computation request is ever runnable with the user's quota
     user_quota = get_user_quota(request.user_id)
     limit_vcpu = user_quota.get("vcpu")
@@ -98,14 +99,11 @@ def create_computation(request: CreateComputationRequest):
                                                     exceeds the user's memory quota (%s)""" 
                                                     % (request.memory, limit_memory))
 
-    # get mzn urls from mzn id
-    mzn_data = get_mzn_instance(request.mzn_id)
-
     # create a computation object with both mzn/dzn urls and the request data
     computation = ScheduleComputationRequest(solver_ids = request.solver_ids, 
                             solver_options = request.solver_options, 
-                            mzn_url = mzn_data.get("mzn_url"), 
-                            dzn_url = mzn_data.get("dzn_url"), 
+                            mzn_file_id = request.mzn_file_id, 
+                            dzn_file_id = request.dzn_file_id, 
                             user_id = request.user_id, 
                             memory = request.memory, 
                             vcpus = request.vcpus)
@@ -206,8 +204,12 @@ def launch_computation(computation: ScheduleComputationRequest):
     Returns:
         [type]: [description]
     """
+
+    mzn_url = get_mzn_url(computation.user_id, computation.mzn_file_id)
+    dzn_url = get_mzn_url(computation.user_id, computation.dzn_file_id)
+
     # Start minizinc solver: 
-    solver_execution_request = {'model_url': computation.mzn_url, 'data_url': computation.dzn_url, 'solvers': computation.solver_ids}
+    solver_execution_request = {'model_url': mzn_url, 'data_url': dzn_url, 'solvers': computation.solver_ids}
 
     solver_execution_response = None
     try:
@@ -237,8 +239,8 @@ def schedule_computation(computation: ScheduleComputationRequest):
     Args:
         computation (Computation): The computation to be scheduled
     """
-    scheduledcomputation_prepared_sql: str = "INSERT INTO scheduledcomputation (user_id, memory_usage, vcpu_usage, mzn_url, dzn_url) values (%s, %s, %s, %s, %s)"
-    scheduledcomputation_values = (computation.user_id, computation.memory, computation.vcpus, computation.mzn_url, computation.dzn_url)
+    scheduledcomputation_prepared_sql: str = "INSERT INTO scheduledcomputation (user_id, memory_usage, vcpu_usage, mzn_file_id, dzn_file_id) values (%s, %s, %s, %s, %s)"
+    scheduledcomputation_values = (computation.user_id, computation.memory, computation.vcpus, computation.mzn_model_file_id, computation.dzn_data_file_id)
 
     # write data to scheduledcomputation table and return the auto incremented id 
     inserted_row_scheduledcomputation_id = writeDB(scheduledcomputation_prepared_sql, scheduledcomputation_values)
@@ -259,7 +261,7 @@ def load_scheduled_computation(scheduledcomputation_id: int) -> ScheduledComputa
     solver_ids = [id_tuple[0] for id_tuple in solver_id_tuples]
 
     # get the rest of the data and save it in an object along with solver ids
-    scheduledcomputation_prepared_sql: str = "SELECT id, user_id, memory_usage, vcpu_usage, mzn_url, dzn_url FROM scheduledcomputation WHERE id = %s"
+    scheduledcomputation_prepared_sql: str = "SELECT id, user_id, memory_usage, vcpu_usage, mzn_file_id, dzn_file_id FROM scheduledcomputation WHERE id = %s"
     query_result = readDB(scheduledcomputation_prepared_sql, (scheduledcomputation_id,))
     if (len(query_result) == 0):
         return None
@@ -269,8 +271,8 @@ def load_scheduled_computation(scheduledcomputation_id: int) -> ScheduledComputa
                                     user_id = scheduled_computation[1], 
                                     memory = scheduled_computation[2], 
                                     vcpus = scheduled_computation[3],
-                                    mzn_url = scheduled_computation[4],
-                                    dzn_url = scheduled_computation[5],
+                                    mzn_file_id = scheduled_computation[4],
+                                    dzn_file_id = scheduled_computation[5],
                                     solver_ids=solver_ids,
                                     solver_options = [])
 
@@ -307,11 +309,14 @@ def get_user_quota(user_id: str) -> Dict[int, int]:
 
     return getQuotaResult
 
-def get_mzn_instance(mzn_id: int):
-    # mzn_instance_response = requests.get(MZN_DATA_SERVICE_IP + "/data/" + mzn_id))
-    mzn_instance_response = {"mzn_url": "www.mznurl.com", "dzn_url": "www.dznurl.com"}
+def get_mzn_url(user_id, file_id):
+    response = requests.get("%s/api/minizinc/%s/%s" % (MZN_DATA_SERVICE_IP, user_id, file_id))
 
-    return mzn_instance_response
+    print(response)
+    url = response.json()
+    print(url)
+
+    return url
 
 def get_user_monitor_processes(user_id: str):
     # getMonitorForUserResult = requests.get(MONITOR_SERVICE_IP + "/monitor/processes/"+ user_id)

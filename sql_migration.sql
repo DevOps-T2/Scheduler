@@ -4,8 +4,8 @@ Create Table: CREATE TABLE `scheduledcomputation` (
   `user_id` varchar(255) NOT NULL,
   `memory_usage` int NOT NULL,
   `vcpu_usage` int NOT NULL,
-  `mzn_url` varchar(255) NOT NULL,
-  `dzn_url` varchar(255) NOT NULL,
+  `mzn_file_id` varchar(255) NOT NULL,
+  `dzn_file_id` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id_UNIQUE` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
