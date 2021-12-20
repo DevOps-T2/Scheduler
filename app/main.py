@@ -261,7 +261,7 @@ def launch_computation(computation: ScheduleComputationRequest):
     computation_id = solver_execution_response_body.get("computation_id")
 
     # Post the computation to the monitor Service: 
-    monitor_request_url = "http://%s/monitor/process/%s" % (MONITOR_SERVICE_IP, computation_id)
+    monitor_request_url = "http://%s/api/monitor/process/" % (MONITOR_SERVICE_IP)
     monitor_request = {'user_id': computation.user_id, 'computation_id': computation_id, 'vcpu_usage': computation.vcpus, 'memory_usage': computation.memory}
     monitor_response = requests.post(monitor_request_url, json = monitor_request, headers=headers)
 
