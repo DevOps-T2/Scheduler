@@ -53,7 +53,7 @@ class ScheduledComputationResponse(BaseModel):
     id: int
     solver_ids: List[int]
     mzn_file_id: str #The file id used to create dzn file url 
-    dzn_file_id: str #The file id used to create mzn file url 
+    dzn_file_id: Optional[str] #The file id used to create mzn file url 
     vcpus: int #The amount of Vcpu resources that this computation should have
     memory: int #The amout of memory resources that this computation should have
     user_id: str # don't know the format that the guid is stored in.
@@ -64,7 +64,7 @@ class ScheduledComputationResponse(BaseModel):
 class LaunchComputationResponse(BaseModel):
     solver_ids: List[int]
     mzn_file_url: str #The URL to that point to where the minizin model file is stored. 
-    dzn_file_url: str #The URL that points to where the minizin data fil is stored.
+    dzn_file_url: Optional[str] #The URL that points to where the minizin data fil is stored.
     vcpus: int #The amount of Vcpu resources that this computation should have
     memory: int #The amout of memory resources that this computation should have
     user_id: str # don't know the format that the guid is stored in.
