@@ -1,6 +1,6 @@
 import os
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi import FastAPI, HTTPException, APIRouter, Request
 from pydantic import BaseModel, validator
 import requests
 import mysql.connector
@@ -86,9 +86,16 @@ router = APIRouter()
 
 @router.post("/api/scheduler/computation") 
 @router.post("/api/scheduler/computation/", include_in_schema=False)
-def create_computation(request: ScheduleComputationRequest):
+def create_computation(request_body: ScheduleComputationRequest, http_req: Request):
+    #Both admin and user has access to this endpoint. But it needs to be to a specific user. 
+    userId = http_req.headers.get("UserId")
+    role = http_req.headers.get("Role")
+
+    if(userId != request_body.user_id and role != "admin"):
+        raise HTTPException(status_code=403)
+
     # check if the computation request is ever runnable with the user's quota
-    user_quota = get_user_quota(request.user_id)
+    user_quota = get_user_quota(request_body.user_id)
     print("user quota:", user_quota)
     limit_vcpu = user_quota.get("vCpu")
     limit_memory = user_quota.get("memory")
@@ -96,34 +103,34 @@ def create_computation(request: ScheduleComputationRequest):
     print(limit_memory)
     print(limit_vcpu)
 
-    print(request)
-    print(request.vcpus)
+    print(request_body)
+    print(request_body.vcpus)
 
-    if (len(request.solver_ids) > limit_vcpu):
+    if (len(request_body.solver_ids) > limit_vcpu):
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
                                                     because the requested amount of parallel solvers (%s) 
                                                     exceeds the user's vCPU quota (%s)""" 
-                                                    % (len(request.solver_ids), limit_vcpu))
-    if (request.vcpus > limit_vcpu):
+                                                    % (len(request_body.solver_ids), limit_vcpu))
+    if (request_body.vcpus > limit_vcpu):
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
                                                     because the requested amount of vCPUs (%s) 
                                                     exceeds the user's vCPU quota (%s)""" 
-                                                    % (request.vcpus, limit_vcpu))
-    if (request.memory > limit_memory):
+                                                    % (request_body.vcpus, limit_vcpu))
+    if (request_body.memory > limit_memory):
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
                                                     because the requested amount of memory (%s) 
                                                     exceeds the user's memory quota (%s)""" 
-                                                    % (request.memory, limit_memory))
+                                                    % (request_body.memory, limit_memory))
 
     # create a computation object with both mzn/dzn urls and the request data
-    computation = ScheduleComputationRequest(solver_ids = request.solver_ids, 
-                            mzn_file_id = request.mzn_file_id, 
-                            dzn_file_id = request.dzn_file_id, 
-                            user_id = request.user_id, 
-                            memory = request.memory, 
-                            vcpus = request.vcpus,
-                            timeout_seconds = request.timeout_seconds,
-                            solver_options = request.solver_options)
+    computation = ScheduleComputationRequest(solver_ids = request_body.solver_ids, 
+                            mzn_file_id = request_body.mzn_file_id, 
+                            dzn_file_id = request_body.dzn_file_id, 
+                            user_id = request_body.user_id, 
+                            memory = request_body.memory, 
+                            vcpus = request_body.vcpus,
+                            timeout_seconds = request_body.timeout_seconds,
+                            solver_options = request_body.solver_options)
 
     scheduled_computations: List = get_all_user_scheduled_computations(computation.user_id)
 
@@ -136,20 +143,39 @@ def create_computation(request: ScheduleComputationRequest):
 
 @router.delete("/api/scheduler/computation/{scheduled_computation_id}")
 @router.delete("/api/scheduler/computation/{scheduled_computation_id}/", include_in_schema=False) 
-def delete_computation(scheduled_computation_id):
+def delete_computation(scheduled_computation_id, http_req: Request):
+    scheduled_computation = load_scheduled_computation(scheduled_computation_id)
+    userId = http_req.headers.get("UserId")
+    role = http_req.headers.get("Role")
+
+    if(userId != scheduled_computation.user_id and role != "admin"):
+        raise HTTPException(status_code=403)
+
     delete_scheduled_computation(scheduled_computation_id)
 
     return "Scheduled computation '%s' has been unscheduled" % scheduled_computation_id
 
 @router.get("/api/scheduler/computations/{user_id}", response_model=List[ScheduledComputationResponse])
 @router.get("/api/scheduler/computations/{user_id}/", response_model=List[ScheduledComputationResponse], include_in_schema=False) 
-def list_user_computations(user_id: str):
+def list_user_computations(user_id: str, http_req: Request):
+    userId = http_req.headers.get("UserId")
+    role = http_req.headers.get("Role")
+
+    if(userId != user_id and role != "admin"):
+        raise HTTPException(status_code=403)
+
     scheduled_computations = get_all_user_scheduled_computations(user_id)
     return scheduled_computations
 
 @router.delete("/api/scheduler/computations/{user_id}")
 @router.delete("/api/scheduler/computations/{user_id}/", include_in_schema=False) 
-def delete_user_computations(user_id: str):
+def delete_user_computations(user_id: str, http_req: Request):
+    userId = http_req.headers.get("UserId")
+    role = http_req.headers.get("Role")
+
+    if(userId != user_id and role != "admin"):
+        raise HTTPException(status_code=403)
+
     scheduled_computations = get_all_user_scheduled_computations(user_id)
     len(scheduled_computations)
 
@@ -161,15 +187,19 @@ def delete_user_computations(user_id: str):
 
 @router.post("/api/scheduler/finish_computation")
 @router.post("/api/scheduler/finish_computation/", include_in_schema=False)
-def finish_computation(request: FinishComputationMessage):
+def finish_computation(request_body: FinishComputationMessage, http_req: Request):
     """Takes a message from the solver execution service, singalling an execution has terminated
     Deletes the process from the monitor service and launches the next scheduled computation
 
     Args:
         request (FinishComputationMessage): a computation id and a user id
     """
+    role = http_req.headers.get("Role")
 
-    monitor_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, request.computation_id)
+    if(role != "admin"):
+        raise HTTPException(status_code=403)
+
+    monitor_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, request_body.computation_id)
 
     monitor_response = requests.delete(monitor_request_url, headers=headers)     
     
@@ -183,7 +213,7 @@ def finish_computation(request: FinishComputationMessage):
         }
         raise HTTPException(status_code=monitor_response.status_code, detail=error_dict)
 
-    return launch_scheduled_computation(request.user_id)
+    return launch_scheduled_computation(request_body.user_id)
 
 app.include_router(router)
 
