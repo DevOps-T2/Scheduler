@@ -338,8 +338,6 @@ def load_scheduled_computation(scheduledcomputation_id: int) -> ScheduledComputa
     return scheduled_computation
 
 def delete_scheduled_computation(scheduled_computation_id: int):
-    scheduled_computation = load_scheduled_computation(scheduled_computation_id)
-
     scheduledcomputation_prepared_sql: str = "DELETE FROM scheduledcomputation WHERE id = %s"
     writeDB(scheduledcomputation_prepared_sql, (scheduled_computation_id,))
 
