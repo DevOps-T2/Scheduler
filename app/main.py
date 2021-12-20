@@ -347,7 +347,18 @@ def get_user_quota(user_id: str) -> Dict[int, int]:
     return quota
 
 def get_mzn_url(user_id, file_id):
-    response = requests.get("http://%s/api/minizinc/%s/%s" % (MZN_DATA_SERVICE_IP, user_id, file_id), headers=headers)
+    url = "http://%s/api/minizinc/%s/%s" % (MZN_DATA_SERVICE_IP, user_id, file_id)
+    response = requests.get(url, headers=headers)
+
+    if (response.status_code > 210):
+        response_body = response.json()
+        print(response_body)
+        error_dict = {
+        "error": "Error on GET request to mzn_data service", 
+        "mzn_data_error_message": response_body.get("detail"), 
+        "mzn_data_request": url
+        }
+        raise HTTPException(status_code=response.status_code, detail=error_dict)
 
     print(response)
     url = response.json()
@@ -358,7 +369,18 @@ def get_mzn_url(user_id, file_id):
     return url
 
 def get_solver_image(solver_id):
+    url = "http://%s/api/solvers/%s" % (SOLVERS_SERVICE_IP, solver_id)
     response = requests.get("http://%s/api/solvers/%s" % (SOLVERS_SERVICE_IP, solver_id), headers=headers)
+
+    if (response.status_code > 210):
+        response_body = response.json()
+        print(response_body)
+        error_dict = {
+        "error": "Error on GET request to solvers service", 
+        "solvers_error_message": response_body.get("detail"), 
+        "solvers_request": url
+        }
+        raise HTTPException(status_code=response.status_code, detail=error_dict)
 
     print(response)
     solver = response.json()
