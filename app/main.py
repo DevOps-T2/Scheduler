@@ -84,7 +84,7 @@ class Solver(BaseModel):
 app = FastAPI()
 router = APIRouter()
 
-@router.post("/api/scheduler/computation") 
+@router.post("/api/scheduler/computation", tags=["Scheduler"]) 
 @router.post("/api/scheduler/computation/", include_in_schema=False)
 def create_computation(request_body: ScheduleComputationRequest, http_req: Request):
     #Both admin and user has access to this endpoint. But it needs to be to a specific user. 
@@ -141,7 +141,7 @@ def create_computation(request_body: ScheduleComputationRequest, http_req: Reque
         schedule_computation(computation)
         return "Computation has been scheduled for launch"
 
-@router.delete("/api/scheduler/computation/{scheduled_computation_id}")
+@router.delete("/api/scheduler/computation/{scheduled_computation_id}", tags=["Scheduler"])
 @router.delete("/api/scheduler/computation/{scheduled_computation_id}/", include_in_schema=False) 
 def delete_computation(scheduled_computation_id, http_req: Request):
     scheduled_computation = load_scheduled_computation(scheduled_computation_id)
@@ -158,7 +158,7 @@ def delete_computation(scheduled_computation_id, http_req: Request):
 
     return "Scheduled computation '%s' has been unscheduled" % scheduled_computation_id
 
-@router.get("/api/scheduler/computations/{user_id}", response_model=List[ScheduledComputationResponse])
+@router.get("/api/scheduler/computations/{user_id}", response_model=List[ScheduledComputationResponse], tags=["Scheduler"])
 @router.get("/api/scheduler/computations/{user_id}/", response_model=List[ScheduledComputationResponse], include_in_schema=False) 
 def list_user_computations(user_id: str, http_req: Request):
     userId = http_req.headers.get("UserId")
@@ -170,7 +170,7 @@ def list_user_computations(user_id: str, http_req: Request):
     scheduled_computations = get_all_user_scheduled_computations(user_id)
     return scheduled_computations
 
-@router.delete("/api/scheduler/computations/{user_id}")
+@router.delete("/api/scheduler/computations/{user_id}", tags=["Scheduler"])
 @router.delete("/api/scheduler/computations/{user_id}/", include_in_schema=False) 
 def delete_user_computations(user_id: str, http_req: Request):
     userId = http_req.headers.get("UserId")
@@ -188,7 +188,7 @@ def delete_user_computations(user_id: str, http_req: Request):
 
     return "Deleted all (%s) scheduled computations associated with user %s" % (len(scheduled_computations), user_id)
 
-@router.post("/api/scheduler/finish_computation")
+@router.post("/api/scheduler/finish_computation", tags=["Scheduler"])
 @router.post("/api/scheduler/finish_computation/", include_in_schema=False)
 def finish_computation(request_body: FinishComputationMessage, http_req: Request):
     """Takes a message from the solver execution service, singalling an execution has terminated
