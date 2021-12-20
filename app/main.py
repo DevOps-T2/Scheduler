@@ -261,8 +261,9 @@ def launch_computation(computation: ScheduleComputationRequest):
     computation_id = solver_execution_response_body.get("computation_id")
 
     # Post the computation to the monitor Service: 
+    monitor_request_url = "http://" + MONITOR_SERVICE_IP + '/monitor/process/'
     monitor_request = {'user_id': computation.user_id, 'computation_id': computation_id, 'vcpu_usage': computation.vcpus, 'memory_usage': computation.memory}
-    monitor_response = requests.post("http://" + MONITOR_SERVICE_IP + '/monitor/process/', json = monitor_request, headers=headers)
+    monitor_response = requests.post(monitor_request_url, json = monitor_request, headers=headers)
 
     if(monitor_response.status_code > 210):
         response_body = monitor_response.json()
@@ -270,7 +271,7 @@ def launch_computation(computation: ScheduleComputationRequest):
         error_dict = {
         "error": "Error on POST request to monitor service", 
         "monitor_error_message": response_body.get("detail"), 
-        "monitor_request_url": mzn_request_url
+        "monitor_request_url": monitor_request_url
         }
         raise HTTPException(status_code=monitor_response.status_code, detail=error_dict)
     
