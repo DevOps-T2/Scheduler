@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, APIRouter
 from pydantic import BaseModel, validator
@@ -74,6 +75,7 @@ class Solver(BaseModel):
     image: str
     cpu_request: int
     mem_request: int
+    timeout_seconds: int
 
 app = FastAPI()
 router = APIRouter()
@@ -234,7 +236,9 @@ def launch_computation(computation: ScheduleComputationRequest):
         solver_image = get_solver_image(solver_id)
         vcpu_fraction = int(computation.vcpus / len(computation.solver_ids))
         memory_fraction = int(computation.memory / len(computation.solver_ids))
-        solvers.append(Solver(image = solver_image, cpu_request = vcpu_fraction, mem_request = memory_fraction))
+        solver = Solver(image = solver_image, cpu_request = vcpu_fraction, mem_request = memory_fraction, timeout_seconds = 30)
+        solver_json = json.dumps(solver)
+        solvers.append(solver_json)
 
     # Start minizinc solver: 
     solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_url, 'data_url': dzn_url, 'solvers': solvers}
