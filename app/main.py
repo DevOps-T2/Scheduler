@@ -161,7 +161,21 @@ def finish_computation(request: FinishComputationMessage):
     Args:
         request (FinishComputationMessage): a computation id and a user id
     """
-    delete_process_response = "" #requests.delete(MONITOR_SERVICE_IP + '/monitor/process/' + request.computation_id)
+
+    monitor_request_url = "http://%s/monitor/process/%s" % (MONITOR_SERVICE_IP, request.computation_id)
+
+    monitor_response = requests.delete(monitor_request_url, json = monitor_request_url, headers=headers)     
+    
+    if(monitor_response.status_code > 210):
+        response_body = monitor_response.json()
+        print(response_body)
+        error_dict = {
+        "error": "Error on DELETE request to monitor service", 
+        "monitor_error_message": response_body.get("detail"), 
+        "monitor_request_url": monitor_request_url
+        }
+        raise HTTPException(status_code=monitor_response.status_code, detail=error_dict)
+
     return launch_scheduled_computation(request.user_id)
 
 app.include_router(router)
