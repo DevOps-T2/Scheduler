@@ -164,7 +164,7 @@ def finish_computation(request: FinishComputationMessage):
 
     monitor_request_url = "http://%s/monitor/process/%s" % (MONITOR_SERVICE_IP, request.computation_id)
 
-    monitor_response = requests.delete(monitor_request_url, json = monitor_request_url, headers=headers)     
+    monitor_response = requests.delete(monitor_request_url, headers=headers)     
     
     if(monitor_response.status_code > 210):
         response_body = monitor_response.json()
