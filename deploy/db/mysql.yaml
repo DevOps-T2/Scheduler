@@ -8,6 +8,8 @@ data:
     vcpu_usage INTEGER NOT NULL,
     mzn_file_id VARCHAR(255) NOT NULL,
     dzn_file_id VARCHAR(255) DEFAULT NULL,
+    timeout_seconds INTEGER NOT NULL,
+    solver_options VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY id_UNIQUE (id)
     );

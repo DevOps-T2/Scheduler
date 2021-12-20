@@ -33,6 +33,8 @@ class ScheduleComputationRequest(BaseModel):
     vcpus: int #The amount of Vcpu resources that this computation should have
     memory: int #The amout of memory resources that this computation should have
     user_id: str # don't know the format that the guid is stored in.
+    timeout_seconds: int # how long the computation should run at most before terminating
+    solver_options: Optional[str]
 
     @validator('vcpus')
     def check_vcpu_more_than_one(cls, v):
@@ -55,6 +57,8 @@ class ScheduledComputationResponse(BaseModel):
     vcpus: int #The amount of Vcpu resources that this computation should have
     memory: int #The amout of memory resources that this computation should have
     user_id: str # don't know the format that the guid is stored in.
+    timeout_seconds: int
+    solver_options: str
 
 # model for launching a computation. mzn attributes are now urls, not ids
 class LaunchComputationResponse(BaseModel):
@@ -64,6 +68,8 @@ class LaunchComputationResponse(BaseModel):
     vcpus: int #The amount of Vcpu resources that this computation should have
     memory: int #The amout of memory resources that this computation should have
     user_id: str # don't know the format that the guid is stored in.
+    timeout_seconds: int
+    solver_options: str
 
 # Data needed from solverexecution when it notifies about finishing a computaiton
 class FinishComputationMessage(BaseModel):
@@ -74,7 +80,6 @@ class Solver(BaseModel):
     image: str
     cpu_request: int
     mem_request: int
-    timeout_seconds: int
 
 app = FastAPI()
 router = APIRouter()
@@ -240,6 +245,7 @@ def launch_computation(computation: ScheduleComputationRequest):
     # get urls by file_id
     mzn_request_url = get_mzn_url(computation.user_id, computation.mzn_file_id)
 
+    dzn_url = None
     if (computation.dzn_file_id != None):
         dzn_url = get_mzn_url(computation.user_id, computation.dzn_file_id)
 
@@ -249,12 +255,17 @@ def launch_computation(computation: ScheduleComputationRequest):
         solver_image = get_solver_image(solver_id)
         vcpu_fraction = int(computation.vcpus / len(computation.solver_ids))
         memory_fraction = int(computation.memory / len(computation.solver_ids))
-        solver = Solver(image = solver_image, cpu_request = vcpu_fraction, mem_request = memory_fraction, timeout_seconds = 30)
+        solver = Solver(image = solver_image, cpu_request = vcpu_fraction, mem_request = memory_fraction)
         solver_json = solver.dict()
         solvers.append(solver_json)
 
     # Start minizinc solver: 
-    solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_request_url, 'data_url': dzn_url, 'solvers': solvers, 'timeout_seconds':30 }
+    solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_request_url, 'solvers': solvers, 'timeout_seconds': 30 }
+    if (dzn_url != None):  
+        solver_execution_request["data_url"] = dzn_url
+    if (computation.solver_options != None):
+        solver_execution_request["solver_options"] = computation.solver_options
+
     print(solver_execution_request)
     mzn_request_url = "http://%s:8080/run" % (MZN_SERVICE_IP)
 
@@ -299,8 +310,8 @@ def schedule_computation(computation: ScheduleComputationRequest):
     Args:
         computation (Computation): The computation to be scheduled
     """
-    scheduledcomputation_prepared_sql: str = "INSERT INTO scheduledcomputation (user_id, memory_usage, vcpu_usage, mzn_file_id, dzn_file_id) values (%s, %s, %s, %s, %s)"
-    scheduledcomputation_values = (computation.user_id, computation.memory, computation.vcpus, computation.mzn_file_id, computation.dzn_file_id)
+    scheduledcomputation_prepared_sql: str = "INSERT INTO scheduledcomputation (user_id, memory_usage, vcpu_usage, mzn_file_id, dzn_file_id, timeout_seconds, solver_options) values (%s, %s, %s, %s, %s, %s, %s)"
+    scheduledcomputation_values = (computation.user_id, computation.memory, computation.vcpus, computation.mzn_file_id, computation.dzn_file_id, computation.timeout_seconds, computation.solver_options)
 
     # write data to scheduledcomputation table and return the auto incremented id 
     inserted_row_scheduledcomputation_id = writeDB(scheduledcomputation_prepared_sql, scheduledcomputation_values)
@@ -321,7 +332,7 @@ def load_scheduled_computation(scheduledcomputation_id: int) -> ScheduledComputa
     solver_ids = [id_tuple[0] for id_tuple in solver_id_tuples]
 
     # get the rest of the data and save it in an object along with solver ids
-    scheduledcomputation_prepared_sql: str = "SELECT id, user_id, memory_usage, vcpu_usage, mzn_file_id, dzn_file_id FROM scheduledcomputation WHERE id = %s"
+    scheduledcomputation_prepared_sql: str = "SELECT id, user_id, memory_usage, vcpu_usage, mzn_file_id, dzn_file_id, timeout_seconds, solver_options FROM scheduledcomputation WHERE id = %s"
     query_result = readDB(scheduledcomputation_prepared_sql, (scheduledcomputation_id,))
     if (len(query_result) == 0):
         return None
@@ -333,6 +344,8 @@ def load_scheduled_computation(scheduledcomputation_id: int) -> ScheduledComputa
                                     vcpus = scheduled_computation[3],
                                     mzn_file_id = scheduled_computation[4],
                                     dzn_file_id = scheduled_computation[5],
+                                    timeout_seconds = scheduled_computation[6],
+                                    solver_options = scheduled_computation[7],
                                     solver_ids=solver_ids)
 
     return scheduled_computation
