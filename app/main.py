@@ -315,7 +315,7 @@ def get_all_user_scheduled_computations(user_id: str) -> List[ScheduledComputati
     return scheduled_computations
 
 def get_user_quota(user_id: str) -> Dict[int, int]:
-    response = requests.get("http://%s/quotas/%s" % (QUOTA_SERVICE_IP, user_id))
+    response = requests.get("http://%s/quota/%s" % (QUOTA_SERVICE_IP, user_id))
 
     print(response)
     quota = response.json()
