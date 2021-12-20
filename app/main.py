@@ -351,7 +351,9 @@ def get_mzn_url(user_id, file_id):
 
     print(response)
     url = response.json()
-    print("url: " +url)
+
+    print("mzn url")
+    print(url)
 
     return url
 
@@ -360,7 +362,8 @@ def get_solver_image(solver_id):
 
     print(response)
     solver = response.json()
-    print("url: " + solver)
+    print("solver image")
+    print(solver)
 
     return solver
 
