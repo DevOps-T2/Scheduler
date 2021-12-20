@@ -85,17 +85,20 @@ def create_computation(request: ScheduleComputationRequest):
     limit_vcpu = user_quota.get("vCpu")
     limit_memory = user_quota.get("memory")
 
-    if len(request.solver_ids) > int(limit_vcpu):
+    print(request)
+    print(request.vcpus)
+
+    if (len(request.solver_ids) > limit_vcpu):
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
                                                     because the requested amount of parallel solvers (%s) 
                                                     exceeds the user's vCPU quota (%s)""" 
                                                     % (len(request.solver_ids), limit_vcpu))
-    if (request.vcpus > int(limit_vcpu)):
+    if (request.vcpus > limit_vcpu):
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
                                                     because the requested amount of vCPUs (%s) 
                                                     exceeds the user's vCPU quota (%s)""" 
                                                     % (request.vcpus, limit_vcpu))
-    if (request.memory > int(limit_memory)):
+    if (request.memory > limit_memory):
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
                                                     because the requested amount of memory (%s) 
                                                     exceeds the user's memory quota (%s)""" 
