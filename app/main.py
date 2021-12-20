@@ -339,9 +339,6 @@ def load_scheduled_computation(scheduledcomputation_id: int) -> ScheduledComputa
 
 def delete_scheduled_computation(scheduled_computation_id: int):
     scheduled_computation = load_scheduled_computation(scheduled_computation_id)
-    if (scheduled_computation == None):
-        HTTPException(
-            status_code=404, detail="A process with scheduled_computation_id = '%s' does not exist." % scheduled_computation_id)
 
     scheduledcomputation_prepared_sql: str = "DELETE FROM scheduledcomputation WHERE id = %s"
     writeDB(scheduledcomputation_prepared_sql, (scheduled_computation_id,))
