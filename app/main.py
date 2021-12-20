@@ -322,7 +322,12 @@ def get_user_quota(user_id: str) -> Dict[int, int]:
     if (response.status_code > 210):
         response_body = response.json()
         print(response_body)
-        raise HTTPException(status_code=response.status_code, detail= "Error when contacting Quota service: Message: " + response_body.get("detail") + " Request: " + url)
+        error_dict = {
+        "error": "Error on GET request to quota service", 
+        "quota_error_message": response_body.get("detail"), 
+        "quota_request": url
+        }
+        raise HTTPException(status_code=response.status_code, detail=error_dict)
 
     print(response)
     quota = response.json()
