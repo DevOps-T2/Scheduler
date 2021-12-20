@@ -81,7 +81,8 @@ router = APIRouter()
 def create_computation(request: ScheduleComputationRequest):
     # check if the computation request is ever runnable with the user's quota
     user_quota = get_user_quota(request.user_id)
-    limit_vcpu = user_quota.get("vcpu")
+    print("user quota:", user_quota)
+    limit_vcpu = user_quota.get("vCpu")
     limit_memory = user_quota.get("memory")
 
     if len(request.solver_ids) > limit_vcpu:
@@ -316,7 +317,6 @@ def get_all_user_scheduled_computations(user_id: str) -> List[ScheduledComputati
 
 def get_user_quota(user_id: str) -> Dict[int, int]:
     url = "http://%s/quota/%s" % (QUOTA_SERVICE_IP, user_id)
-    print(url)
     response = requests.get(url=url, headers=headers)
     
     if (response.status_code > 210):
