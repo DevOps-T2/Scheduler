@@ -261,7 +261,7 @@ def schedule_computation(computation: ScheduleComputationRequest):
         computation (Computation): The computation to be scheduled
     """
     scheduledcomputation_prepared_sql: str = "INSERT INTO scheduledcomputation (user_id, memory_usage, vcpu_usage, mzn_file_id, dzn_file_id) values (%s, %s, %s, %s, %s)"
-    scheduledcomputation_values = (computation.user_id, computation.memory, computation.vcpus, computation.mzn_model_file_id, computation.dzn_data_file_id)
+    scheduledcomputation_values = (computation.user_id, computation.memory, computation.vcpus, computation.mzn_file_id, computation.dzn_file_id)
 
     # write data to scheduledcomputation table and return the auto incremented id 
     inserted_row_scheduledcomputation_id = writeDB(scheduledcomputation_prepared_sql, scheduledcomputation_values)
@@ -374,7 +374,7 @@ def get_user_monitor_processes(user_id: str):
         }
         raise HTTPException(status_code=response.status_code, detail=error_dict)
 
-    print(response)
+    print("monitor", response)
     user_processes = response.json()
     print("monitor: ", user_processes)
     
