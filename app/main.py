@@ -1,5 +1,4 @@
 import os
-import json
 from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, APIRouter
 from pydantic import BaseModel, validator
@@ -237,7 +236,7 @@ def launch_computation(computation: ScheduleComputationRequest):
         vcpu_fraction = int(computation.vcpus / len(computation.solver_ids))
         memory_fraction = int(computation.memory / len(computation.solver_ids))
         solver = Solver(image = solver_image, cpu_request = vcpu_fraction, mem_request = memory_fraction, timeout_seconds = 30)
-        solver_json = json.dumps(solver)
+        solver_json = solver.json()
         solvers.append(solver_json)
 
     # Start minizinc solver: 
