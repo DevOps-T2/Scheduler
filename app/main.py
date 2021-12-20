@@ -162,7 +162,7 @@ def finish_computation(request: FinishComputationMessage):
         request (FinishComputationMessage): a computation id and a user id
     """
 
-    monitor_request_url = "http://%s/monitor/process/%s" % (MONITOR_SERVICE_IP, request.computation_id)
+    monitor_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, request.computation_id)
 
     monitor_response = requests.delete(monitor_request_url, headers=headers)     
     
