@@ -236,7 +236,7 @@ def launch_computation(computation: ScheduleComputationRequest):
         vcpu_fraction = int(computation.vcpus / len(computation.solver_ids))
         memory_fraction = int(computation.memory / len(computation.solver_ids))
         solver = Solver(image = solver_image, cpu_request = vcpu_fraction, mem_request = memory_fraction, timeout_seconds = 30)
-        solver_json = solver.json()
+        solver_json = solver.dict()
         solvers.append(solver_json)
 
     # Start minizinc solver: 
