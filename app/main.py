@@ -92,7 +92,7 @@ def create_computation(request_body: ScheduleComputationRequest, http_req: Reque
     role = http_req.headers.get("Role")
 
     if(userId != request_body.user_id and role != "admin"):
-        raise HTTPException(status_code=403)
+        raise HTTPException(status_code=401)
 
     # check if the computation request is ever runnable with the user's quota
     user_quota = get_user_quota(request_body.user_id)
@@ -152,7 +152,7 @@ def delete_computation(scheduled_computation_id, http_req: Request):
         return "There is no scheduled computation with id %s" % (scheduled_computation_id)
 
     if(userId != scheduled_computation.user_id and role != "admin"):
-        raise HTTPException(status_code=403)
+        raise HTTPException(status_code=401)
 
     delete_scheduled_computation(scheduled_computation_id)
 
@@ -165,7 +165,7 @@ def list_user_computations(user_id: str, http_req: Request):
     role = http_req.headers.get("Role")
 
     if(userId != user_id and role != "admin"):
-        raise HTTPException(status_code=403)
+        raise HTTPException(status_code=401)
 
     scheduled_computations = get_all_user_scheduled_computations(user_id)
     return scheduled_computations
@@ -177,7 +177,7 @@ def delete_user_computations(user_id: str, http_req: Request):
     role = http_req.headers.get("Role")
 
     if(userId != user_id and role != "admin"):
-        raise HTTPException(status_code=403)
+        raise HTTPException(status_code=401)
 
     scheduled_computations = get_all_user_scheduled_computations(user_id)
     len(scheduled_computations)
@@ -200,7 +200,7 @@ def finish_computation(request_body: FinishComputationMessage, http_req: Request
     role = http_req.headers.get("Role")
 
     if(role != "admin"):
-        raise HTTPException(status_code=403)
+        raise HTTPException(status_code=401)
 
     monitor_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, request_body.computation_id)
 
