@@ -173,7 +173,7 @@ def user_resources_are_available(user_id, vcpu_requested, memory_requested) -> b
     
     #Gets the limit resources for a user, by call the GetQuotasEndPoint
     getQuotaResult = get_user_quota(user_id)
-    limit_vcpu = getQuotaResult.get("vcpu")
+    limit_vcpu = getQuotaResult.get("vCpu")
     limit_memory = getQuotaResult.get("memory")
 
     # A list of monitored processes
@@ -362,7 +362,18 @@ def get_solver_image(solver_id):
     return solver
 
 def get_user_monitor_processes(user_id: str):
-    response = requests.get("http://%s/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id), headers=headers)
+    url = "http://%s/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id)
+    response = requests.get(url, headers=headers)
+    if (response.status_code > 210):
+        response_body = response.json()
+        print(response_body)
+        error_dict = {
+        "error": "Error on GET request to monitor service", 
+        "monitor_error_message": response_body.get("detail"), 
+        "monitor_request": url
+        }
+        raise HTTPException(status_code=response.status_code, detail=error_dict)
+
     print(response)
     user_processes = response.json()
     print("monitor: ", user_processes)
