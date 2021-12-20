@@ -362,7 +362,7 @@ def get_solver_image(solver_id):
     return solver
 
 def get_user_monitor_processes(user_id: str):
-    url = "http://%s/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id)
+    url = "http://%s/api/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id)
     response = requests.get(url, headers=headers)
     if (response.status_code > 210):
         response_body = response.json()
