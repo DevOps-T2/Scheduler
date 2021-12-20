@@ -58,7 +58,7 @@ class ScheduledComputationResponse(BaseModel):
     memory: int #The amout of memory resources that this computation should have
     user_id: str # don't know the format that the guid is stored in.
     timeout_seconds: int
-    solver_options: str
+    solver_options: Optional[str]
 
 # model for launching a computation. mzn attributes are now urls, not ids
 class LaunchComputationResponse(BaseModel):
@@ -69,7 +69,7 @@ class LaunchComputationResponse(BaseModel):
     memory: int #The amout of memory resources that this computation should have
     user_id: str # don't know the format that the guid is stored in.
     timeout_seconds: int
-    solver_options: str
+    solver_options: Optional[str]
 
 # Data needed from solverexecution when it notifies about finishing a computaiton
 class FinishComputationMessage(BaseModel):
