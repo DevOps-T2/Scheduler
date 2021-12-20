@@ -176,6 +176,9 @@ def user_resources_are_available(user_id, vcpu_requested, memory_requested) -> b
     limit_vcpu = getQuotaResult.get("vCpu")
     limit_memory = getQuotaResult.get("memory")
 
+    print("limit_vcpu: ", limit_vcpu)
+    print("limit_memory: ", limit_memory)
+    
     # A list of monitored processes
     getMonitorForUserResult = get_user_monitor_processes(user_id)
 
