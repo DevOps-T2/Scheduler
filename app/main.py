@@ -148,6 +148,9 @@ def delete_computation(scheduled_computation_id, http_req: Request):
     userId = http_req.headers.get("UserId")
     role = http_req.headers.get("Role")
 
+    if (scheduled_computation == None):
+        return "There is no scheduled computation with id %s" % (scheduled_computation_id)
+
     if(userId != scheduled_computation.user_id and role != "admin"):
         raise HTTPException(status_code=403)
 
