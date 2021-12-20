@@ -243,7 +243,7 @@ def launch_computation(computation: ScheduleComputationRequest):
     solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_url, 'data_url': dzn_url, 'solvers': solvers, 'timeout_seconds':30 }
     mzn_url = "http://%s:8080/run" % (MZN_SERVICE_IP)
 
-    solver_execution_response = requests.post(mzn_url, json = solver_execution_request, headers=headers)     
+    solver_execution_response = requests.post(mzn_url, data = solver_execution_request, headers=headers)     
     
     if(solver_execution_response.status_code > 210):
         response_body = solver_execution_response.json()
