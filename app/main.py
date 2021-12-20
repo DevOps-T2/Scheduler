@@ -23,7 +23,7 @@ MZN_SERVICE_IP = os.getenv("MZN_SERVICE_IP")
 MZN_DATA_SERVICE_IP = os.getenv("MZN_DATA_SERVICE_IP")
 SOLVERS_SERVICE_IP = os.getenv("SOLVERS_SERVICE_IP")
 
-headers = { 'UserId': 'system', 'Role': 'admin'}
+headers = { 'UserId': 'system', 'Role': 'admin', 'Content-Type': 'application/json'}
 
 # All data that needs to be added to the database
 class ScheduleComputationRequest(BaseModel):
@@ -224,7 +224,7 @@ def launch_computation(computation: ScheduleComputationRequest):
     """
 
     # get urls by file_id
-    mzn_url = get_mzn_url(computation.user_id, computation.mzn_file_id)
+    mzn_request_url = get_mzn_url(computation.user_id, computation.mzn_file_id)
 
     if (computation.dzn_file_id != None):
         dzn_url = get_mzn_url(computation.user_id, computation.dzn_file_id)
@@ -240,10 +240,10 @@ def launch_computation(computation: ScheduleComputationRequest):
         solvers.append(solver_json)
 
     # Start minizinc solver: 
-    solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_url, 'data_url': dzn_url, 'solvers': solvers, 'timeout_seconds':30 }
-    mzn_url = "http://%s:8080/run" % (MZN_SERVICE_IP)
+    solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_request_url, 'data_url': dzn_url, 'solvers': solvers, 'timeout_seconds':30 }
+    mzn_request_url = "http://%s:8080/run" % (MZN_SERVICE_IP)
 
-    solver_execution_response = requests.post(mzn_url, data = solver_execution_request, headers=headers)     
+    solver_execution_response = requests.post(mzn_request_url, data = solver_execution_request, headers=headers)     
     
     if(solver_execution_response.status_code > 210):
         response_body = solver_execution_response.json()
@@ -251,7 +251,7 @@ def launch_computation(computation: ScheduleComputationRequest):
         error_dict = {
         "error": "Error on POST request to mzn_dispatcher service", 
         "mzn_dispatcher_error_message": response_body.get("detail"), 
-        "mzn_dispatcher_request": mzn_url
+        "mzn_dispatcher_request_url": mzn_request_url
         }
         raise HTTPException(status_code=solver_execution_response.status_code, detail=error_dict)
 
