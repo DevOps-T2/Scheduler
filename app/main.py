@@ -224,7 +224,9 @@ def launch_computation(computation: ScheduleComputationRequest):
 
     # get urls by file_id
     mzn_url = get_mzn_url(computation.user_id, computation.mzn_file_id)
-    dzn_url = get_mzn_url(computation.user_id, computation.dzn_file_id)
+
+    if (computation.dzn_file_id != None):
+        dzn_url = get_mzn_url(computation.user_id, computation.dzn_file_id)
 
     # construct solver objects (calculate resource fractions and get solver image from solver image id)
     solvers = []
@@ -385,9 +387,10 @@ def get_solver_image(solver_id):
     print(response)
     solver = response.json()
     print("solver image")
-    print(solver)
+    print(solver)  
 
-    return solver
+    solver_image = solver.get("image")
+    return solver_image
 
 def get_user_monitor_processes(user_id: str):
     url = "http://%s/api/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id)
