@@ -121,7 +121,9 @@ def create_computation(request: ScheduleComputationRequest):
                             dzn_file_id = request.dzn_file_id, 
                             user_id = request.user_id, 
                             memory = request.memory, 
-                            vcpus = request.vcpus)
+                            vcpus = request.vcpus,
+                            timeout_seconds = request.timeout_seconds,
+                            solver_options = request.solver_options)
 
     scheduled_computations: List = get_all_user_scheduled_computations(computation.user_id)
 
@@ -260,7 +262,7 @@ def launch_computation(computation: ScheduleComputationRequest):
         solvers.append(solver_json)
 
     # Start minizinc solver: 
-    solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_request_url, 'solvers': solvers, 'timeout_seconds': 30 }
+    solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_request_url, 'solvers': solvers, 'timeout_seconds': computation.timeout_seconds }
     if (dzn_url != None):  
         solver_execution_request["data_url"] = dzn_url
     if (computation.solver_options != None):
