@@ -178,7 +178,7 @@ def user_resources_are_available(user_id, vcpu_requested, memory_requested) -> b
 
     print("limit_vcpu: ", limit_vcpu)
     print("limit_memory: ", limit_memory)
-    
+
     # A list of monitored processes
     getMonitorForUserResult = get_user_monitor_processes(user_id)
 
@@ -191,7 +191,7 @@ def user_resources_are_available(user_id, vcpu_requested, memory_requested) -> b
     available_vcpu = limit_vcpu - current_vcpu_usage
     available_memory = limit_memory - current_memory_usage
 
-    if (available_vcpu > vcpu_requested) and (available_memory > memory_requested):
+    if (available_vcpu >= vcpu_requested) and (available_memory >= memory_requested):
         return True
     else:
         return False
