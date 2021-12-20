@@ -23,7 +23,7 @@ MZN_SERVICE_IP = os.getenv("MZN_SERVICE_IP")
 MZN_DATA_SERVICE_IP = os.getenv("MZN_DATA_SERVICE_IP")
 SOLVERS_SERVICE_IP = os.getenv("SOLVERS_SERVICE_IP")
 
-
+headers = { 'UserId': 'system', 'Role': 'admin'}
 
 # All data that needs to be added to the database
 class ScheduleComputationRequest(BaseModel):
@@ -223,10 +223,10 @@ def launch_computation(computation: ScheduleComputationRequest):
         solvers.append(Solver(image = solver_image, cpu_request = vcpu_fraction, memory = memory_fraction))
 
     # Start minizinc solver: 
-    solver_execution_request = {'model_url': mzn_url, 'data_url': dzn_url, 'solvers': solvers}
+    solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_url, 'data_url': dzn_url, 'solvers': solvers}
     solver_execution_response = None
     try:
-        solver_execution_response = requests.post("http://" + MZN_SERVICE_IP + '/run', json = solver_execution_request)     
+        solver_execution_response = requests.post("http://" + MZN_SERVICE_IP + '/run', json = solver_execution_request, headers=headers)     
     except Error as e:
         return e
     
@@ -238,7 +238,7 @@ def launch_computation(computation: ScheduleComputationRequest):
 
     monitor_response = None
     try:
-        monitor_response = requests.post("http://" + MONITOR_SERVICE_IP + '/monitor/process/', json = monitor_request)
+        monitor_response = requests.post("http://" + MONITOR_SERVICE_IP + '/monitor/process/', json = monitor_request, headers=headers)
     except Error as e:
         return e
 
@@ -315,7 +315,7 @@ def get_all_user_scheduled_computations(user_id: str) -> List[ScheduledComputati
     return scheduled_computations
 
 def get_user_quota(user_id: str) -> Dict[int, int]:
-    response = requests.get("http://%s/quota/%s" % (QUOTA_SERVICE_IP, user_id))
+    response = requests.get("http://%s/quota/%s" % (QUOTA_SERVICE_IP, user_id), headers=headers)
 
     print(response)
     quota = response.json()
@@ -324,7 +324,7 @@ def get_user_quota(user_id: str) -> Dict[int, int]:
     return quota
 
 def get_mzn_url(user_id, file_id):
-    response = requests.get("http://%s/api/minizinc/%s/%s" % (MZN_DATA_SERVICE_IP, user_id, file_id))
+    response = requests.get("http://%s/api/minizinc/%s/%s" % (MZN_DATA_SERVICE_IP, user_id, file_id), headers=headers)
 
     print(response)
     url = response.json()
@@ -333,7 +333,7 @@ def get_mzn_url(user_id, file_id):
     return url
 
 def get_solver_image(solver_id):
-    response = requests.get("http://%s/api/solvers/%s" % (SOLVERS_SERVICE_IP, solver_id))
+    response = requests.get("http://%s/api/solvers/%s" % (SOLVERS_SERVICE_IP, solver_id), headers=headers)
 
     print(response)
     solver = response.json()
@@ -342,7 +342,7 @@ def get_solver_image(solver_id):
     return solver
 
 def get_user_monitor_processes(user_id: str):
-    response = requests.get("http://%s/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id))
+    response = requests.get("http://%s/monitor/processes/%s" % (MONITOR_SERVICE_IP, user_id), headers=headers)
     print(response)
     user_processes = response.json()
     print("monitor: ", user_processes)
