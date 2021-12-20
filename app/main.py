@@ -241,6 +241,7 @@ def launch_computation(computation: ScheduleComputationRequest):
 
     # Start minizinc solver: 
     solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_request_url, 'data_url': dzn_url, 'solvers': solvers, 'timeout_seconds':30 }
+    print(solver_execution_request)
     mzn_request_url = "http://%s:8080/run" % (MZN_SERVICE_IP)
 
     solver_execution_response = requests.post(mzn_request_url, json = solver_execution_request, headers=headers)     
