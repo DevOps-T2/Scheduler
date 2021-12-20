@@ -243,7 +243,7 @@ def launch_computation(computation: ScheduleComputationRequest):
     solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_url, 'data_url': dzn_url, 'solvers': solvers}
     solver_execution_response = None
     try:
-        solver_execution_response = requests.post("http://" + MZN_SERVICE_IP + '/run', json = solver_execution_request, headers=headers)     
+        solver_execution_response = requests.post("http://" + MZN_SERVICE_IP + ':8080/run', json = solver_execution_request, headers=headers)     
     except Error as e:
         return e
     
