@@ -262,12 +262,18 @@ def launch_computation(computation: ScheduleComputationRequest):
 
     # Post the computation to the monitor Service: 
     monitor_request = {'user_id': computation.user_id, 'computation_id': computation_id, 'vcpu_usage': computation.vcpus, 'memory_usage': computation.memory}
+    monitor_response = requests.post("http://" + MONITOR_SERVICE_IP + '/monitor/process/', json = monitor_request, headers=headers)
 
-    monitor_response = None
-    try:
-        monitor_response = requests.post("http://" + MONITOR_SERVICE_IP + '/monitor/process/', json = monitor_request, headers=headers)
-    except Error as e:
-        return e
+    if(monitor_response.status_code > 210):
+        response_body = monitor_response.json()
+        print(response_body)
+        error_dict = {
+        "error": "Error on POST request to monitor service", 
+        "monitor_error_message": response_body.get("detail"), 
+        "monitor_request_url": mzn_request_url
+        }
+        raise HTTPException(status_code=monitor_response.status_code, detail=error_dict)
+    
 
     return {"computation_id": computation_id}
     
