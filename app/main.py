@@ -317,7 +317,12 @@ def get_all_user_scheduled_computations(user_id: str) -> List[ScheduledComputati
 def get_user_quota(user_id: str) -> Dict[int, int]:
     url = "http://%s/quota/%s" % (QUOTA_SERVICE_IP, user_id)
     print(url)
-    response = requests.get(url=url, headers=headers)
+    response = None
+    try:
+        response = requests.get(url=url, headers=headers)
+    except Error as e:
+        print(e)
+        raise HTTPException(status_code=response.status_code, detail="Error when contacting quotas service")
 
     print(response)
     quota = response.json()
