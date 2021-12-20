@@ -38,11 +38,13 @@ class ScheduleComputationRequest(BaseModel):
     def check_vcpu_more_than_one(cls, v):
         if (v < 1):
             raise ValueError ("vcpus can't be less than 1")
+        return v
 
     @validator('memory')
     def check_memory_more_than_one(cls, v):
         if (v < 1):
             raise ValueError ("memory can't be less than 1")
+        return v
 
 # Same as ScheduleComputationRequest but with the autoincremented id
 class ScheduledComputationResponse(BaseModel):
@@ -84,6 +86,9 @@ def create_computation(request: ScheduleComputationRequest):
     print("user quota:", user_quota)
     limit_vcpu = user_quota.get("vCpu")
     limit_memory = user_quota.get("memory")
+
+    print(limit_memory)
+    print(limit_vcpu)
 
     print(request)
     print(request.vcpus)
