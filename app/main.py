@@ -241,13 +241,22 @@ def launch_computation(computation: ScheduleComputationRequest):
 
     # Start minizinc solver: 
     solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_url, 'data_url': dzn_url, 'solvers': solvers, 'timeout_seconds':30 }
-    solver_execution_response = None
-    try:
-        solver_execution_response = requests.post("http://" + MZN_SERVICE_IP + ':8080/run', json = solver_execution_request, headers=headers)     
-    except Error as e:
-        return e
+    mzn_url = "http://%s:8080/run" % (MZN_SERVICE_IP)
+
+    solver_execution_response = requests.post(mzn_url, json = solver_execution_request, headers=headers)     
     
+    if(solver_execution_response.status_code > 210):
+        response_body = solver_execution_response.json()
+        print(response_body)
+        error_dict = {
+        "error": "Error on POST request to mzn_dispatcher service", 
+        "mzn_dispatcher_error_message": response_body.get("detail"), 
+        "mzn_dispatcher_request": mzn_url
+        }
+        raise HTTPException(status_code=solver_execution_response.status_code, detail=error_dict)
+
     solver_execution_response_body = solver_execution_response.json()
+    print(solver_execution_response_body)
     computation_id = solver_execution_response_body.get("computation_id")
 
     # Post the computation to the monitor Service: 
