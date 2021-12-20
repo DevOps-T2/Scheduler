@@ -234,7 +234,7 @@ def launch_computation(computation: ScheduleComputationRequest):
         solver_image = get_solver_image(solver_id)
         vcpu_fraction = int(computation.vcpus / len(computation.solver_ids))
         memory_fraction = int(computation.memory / len(computation.solver_ids))
-        solvers.append(Solver(image = solver_image, cpu_request = vcpu_fraction, memory = memory_fraction))
+        solvers.append(Solver(image = solver_image, cpu_request = vcpu_fraction, mem_request = memory_fraction))
 
     # Start minizinc solver: 
     solver_execution_request = {'user_id': computation.user_id, 'model_url': mzn_url, 'data_url': dzn_url, 'solvers': solvers}
