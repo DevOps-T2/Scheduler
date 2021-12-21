@@ -223,7 +223,7 @@ def finish_computation(request_body: FinishComputationMessage, http_req: Request
 def delete_running_computation(computation_id: str, http_req: Request):
     # get user_id for computation
     monitor_delete_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, computation_id)
-    monitor_delete_response = requests.post(monitor_delete_request_url, headers=headers)
+    monitor_delete_response = requests.get(monitor_delete_request_url, headers=headers)
 
     if(monitor_delete_response.status_code > 210):
         response_body = monitor_delete_response.json()
