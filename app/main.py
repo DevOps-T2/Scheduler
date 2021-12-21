@@ -172,7 +172,7 @@ def list_user_computations(user_id: str, http_req: Request):
 
 @router.delete("/api/scheduler/computations/{user_id}", tags=["Scheduler"])
 @router.delete("/api/scheduler/computations/{user_id}/", include_in_schema=False) 
-def delete_user_computations(user_id: str, http_req: Request):
+def delete_running_computation(user_id: str, http_req: Request):
     userId = http_req.headers.get("UserId")
     role = http_req.headers.get("Role")
 
@@ -220,7 +220,7 @@ def finish_computation(request_body: FinishComputationMessage, http_req: Request
 
 @router.delete("/api/scheduler/computation/running/{computation_id}", tags=["Scheduler"])
 @router.delete("/api/scheduler/computation/running/{computation_id}/", include_in_schema=False) 
-def delete_user_computations(computation_id: str, http_req: Request):
+def delete_running_computation(computation_id: str, http_req: Request):
     # get user_id for computation
     monitor_delete_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, computation_id)
     monitor_delete_response = requests.post(monitor_delete_request_url, headers=headers)
