@@ -172,7 +172,7 @@ def list_user_computations(user_id: str, http_req: Request):
 
 @router.delete("/api/scheduler/computations/{user_id}", tags=["Scheduler"])
 @router.delete("/api/scheduler/computations/{user_id}/", include_in_schema=False) 
-def delete_running_computation(user_id: str, http_req: Request):
+def delete_scheduled_computation(user_id: str, http_req: Request):
     userId = http_req.headers.get("UserId")
     role = http_req.headers.get("Role")
 
