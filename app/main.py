@@ -10,18 +10,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # database credentials
-DATABASE_NAME = os.getenv("DATABASE_NAME")
-DATABASE_HOST_READ = os.getenv("DATABASE_HOST_READ")
-DATABASE_HOST_WRITE = os.getenv("DATABASE_HOST_WRITE")
-DATABASE_USER = os.getenv("DATABASE_USER")
+DATABASE_NAME = "Default" # os.getenv("DATABASE_NAME")
+DATABASE_HOST_READ = "scheduler-mysql-read" # os.getenv("DATABASE_HOST_READ")
+DATABASE_HOST_WRITE =  "scheduler-mysql-0.scheduler-headless" # os.getenv("DATABASE_HOST_WRITE")
+DATABASE_USER = "root" # os.getenv("DATABASE_USER")
 DATABASE_PASSWORD = '' # os.getenv("DATABASE_PASSWORD")
 
 # service ips
-MONITOR_SERVICE_IP = os.getenv("MONITOR_SERVICE_IP")
-QUOTA_SERVICE_IP = os.getenv("QUOTA_SERVICE_IP")
-MZN_SERVICE_IP = os.getenv("MZN_SERVICE_IP")
-MZN_DATA_SERVICE_IP = os.getenv("MZN_DATA_SERVICE_IP")
-SOLVERS_SERVICE_IP = os.getenv("SOLVERS_SERVICE_IP")
+MONITOR_SERVICE_IP = "monitor-app" # os.getenv("MONITOR_SERVICE_IP")
+QUOTA_SERVICE_IP = "quotas-app" # os.getenv("QUOTA_SERVICE_IP")
+MZN_SERVICE_IP = "mzn-dispatcher-service" # os.getenv("MZN_SERVICE_IP")
+MZN_DATA_SERVICE_IP = "minizinc-app" # os.getenv("MZN_DATA_SERVICE_IP")
+SOLVERS_SERVICE_IP = "solvers-app-service" # os.getenv("SOLVERS_SERVICE_IP")
 
 headers = { 'UserId': 'system', 'Role': 'admin', 'Content-Type': 'application/json'}
 
@@ -217,6 +217,47 @@ def finish_computation(request_body: FinishComputationMessage, http_req: Request
         raise HTTPException(status_code=monitor_response.status_code, detail=error_dict)
 
     return launch_scheduled_computation(request_body.user_id)
+
+@router.delete("/api/scheduler/computation/running/{computation_id}", tags=["Scheduler"])
+@router.delete("/api/scheduler/computation/running/{computation_id}/", include_in_schema=False) 
+def delete_user_computations(computation_id: str, http_req: Request):
+    # get user_id for computation
+    monitor_delete_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, computation_id)
+    monitor_delete_response = requests.post(monitor_delete_request_url, headers=headers)
+
+    if(monitor_delete_response.status_code > 210):
+        response_body = monitor_delete_response.json()
+        print(response_body)
+        error_dict = {
+        "error": "Error on POST request to monitor service", 
+        "monitor_error_message": response_body.get("detail"), 
+        "monitor_request_url": monitor_delete_request_url
+        }
+        raise HTTPException(status_code=monitor_delete_response.status_code, detail=error_dict)
+    monitor_get_body = monitor_delete_response.json()
+
+    userId = http_req.headers.get("UserId")
+    role = http_req.headers.get("Role")
+
+    # auth
+    if(userId != monitor_get_body.user_id and role != "admin"):
+        raise HTTPException(status_code=401)
+
+    # stop computation
+    mzn_request_url = "http://%s:8080/stop/%s" % (MZN_SERVICE_IP, computation_id)
+    solver_execution_response = requests.delete(mzn_request_url, headers=headers)     
+    
+    if(solver_execution_response.status_code > 210):
+        response_body = solver_execution_response.json()
+        print(response_body)
+        error_dict = {
+        "error": "Error on DELETE request to mzn_dispatcher service", 
+        "mzn_dispatcher_error_message": response_body.get("detail"), 
+        "mzn_dispatcher_request_url": mzn_request_url
+        }
+        raise HTTPException(status_code=solver_execution_response.status_code, detail=error_dict)
+
+    return "The running computation with id %s has been stopped"  % (computation_id)
 
 app.include_router(router)
 
