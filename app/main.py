@@ -229,7 +229,7 @@ def delete_running_computation(computation_id: str, http_req: Request):
         response_body = monitor_delete_response.json()
         print(response_body)
         error_dict = {
-        "error": "Error on POST request to monitor service", 
+        "error": "Error on GET request to monitor service", 
         "monitor_error_message": response_body.get("detail"), 
         "monitor_request_url": monitor_delete_request_url
         }
