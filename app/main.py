@@ -225,7 +225,10 @@ def delete_running_computation(computation_id: str, http_req: Request):
     monitor_get_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, computation_id)
     monitor_get_response = requests.get(monitor_get_request_url, headers=headers)
 
-    if(monitor_get_response.status_code > 210):
+    if (monitor_get_response.status_code == 404):
+        return "Computation already terminated" 
+    
+    elif (monitor_get_response.status_code > 210):
         monitor_get_body = monitor_get_response.json()
         print(monitor_get_body)
         error_dict = {
