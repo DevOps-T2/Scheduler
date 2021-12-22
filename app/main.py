@@ -222,25 +222,25 @@ def finish_computation(request_body: FinishComputationMessage, http_req: Request
 @router.delete("/api/scheduler/computation/running/{computation_id}/", include_in_schema=False) 
 def delete_running_computation(computation_id: str, http_req: Request):
     # get user_id for computation
-    monitor_delete_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, computation_id)
-    monitor_delete_response = requests.get(monitor_delete_request_url, headers=headers)
+    monitor_get_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, computation_id)
+    monitor_get_response = requests.get(monitor_get_request_url, headers=headers)
 
-    if(monitor_delete_response.status_code > 210):
-        response_body = monitor_delete_response.json()
-        print(response_body)
+    if(monitor_get_response.status_code > 210):
+        monitor_get_body = monitor_get_response.json()
+        print(monitor_get_body)
         error_dict = {
         "error": "Error on GET request to monitor service", 
-        "monitor_error_message": response_body.get("detail"), 
-        "monitor_request_url": monitor_delete_request_url
+        "monitor_error_message": monitor_get_body.get("detail"), 
+        "monitor_request_url": monitor_get_request_url
         }
-        raise HTTPException(status_code=monitor_delete_response.status_code, detail=error_dict)
-    monitor_get_body = monitor_delete_response.json()
+        raise HTTPException(status_code=monitor_get_response.status_code, detail=error_dict)
+    monitor_get_body = monitor_get_response.json()
 
     userId = http_req.headers.get("UserId")
     role = http_req.headers.get("Role")
 
     # auth
-    if(userId != monitor_get_body.user_id and role != "admin"):
+    if(userId != monitor_get_body.get("user_id") and role != "admin"):
         raise HTTPException(status_code=401)
 
     # stop computation
