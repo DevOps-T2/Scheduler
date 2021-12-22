@@ -247,7 +247,7 @@ def delete_running_computation(computation_id: str, http_req: Request):
         raise HTTPException(status_code=401)
 
     # stop computation
-    mzn_request_url = "http://%s:8080/stop/%s" % (MZN_SERVICE_IP, computation_id)
+    mzn_request_url = "http://%s:8080/delete/%s" % (MZN_SERVICE_IP, computation_id)
     solver_execution_response = requests.delete(mzn_request_url, headers=headers)     
 
     print("DELETE EXECUTION")
