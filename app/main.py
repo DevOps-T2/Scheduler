@@ -249,7 +249,10 @@ def delete_running_computation(computation_id: str, http_req: Request):
     # stop computation
     mzn_request_url = "http://%s:8080/stop/%s" % (MZN_SERVICE_IP, computation_id)
     solver_execution_response = requests.delete(mzn_request_url, headers=headers)     
-    
+
+    "DELETE EXECUTION"
+    print(solver_execution_response)
+    print(solver_execution_response.json)
     if(solver_execution_response.status_code > 210):
         response_body = solver_execution_response.json()
         print(response_body)
