@@ -87,6 +87,9 @@ router = APIRouter()
 @router.post("/api/scheduler/computation", tags=["Scheduler"]) 
 @router.post("/api/scheduler/computation/", include_in_schema=False)
 def create_computation(request_body: ScheduleComputationRequest, http_req: Request):
+    """Call the dispatcher service to start a computation, provided that the user has enough available resources. 
+    Otherwise, schedule it if the user has enough resources in its quota.
+    """
     #Both admin and user has access to this endpoint. But it needs to be to a specific user. 
     userId = http_req.headers.get("UserId")
     role = http_req.headers.get("Role")
@@ -137,6 +140,8 @@ def create_computation(request_body: ScheduleComputationRequest, http_req: Reque
 @router.delete("/api/scheduler/computation/{scheduled_computation_id}", tags=["Scheduler"])
 @router.delete("/api/scheduler/computation/{scheduled_computation_id}/", include_in_schema=False) 
 def delete_computation(scheduled_computation_id, http_req: Request):
+    """Remove a computaiton from the queue
+    """
     scheduled_computation = load_scheduled_computation(scheduled_computation_id)
     userId = http_req.headers.get("UserId")
     role = http_req.headers.get("Role")
@@ -154,6 +159,8 @@ def delete_computation(scheduled_computation_id, http_req: Request):
 @router.get("/api/scheduler/computations/{user_id}", response_model=List[ScheduledComputationResponse], tags=["Scheduler"])
 @router.get("/api/scheduler/computations/{user_id}/", response_model=List[ScheduledComputationResponse], include_in_schema=False) 
 def list_user_computations(user_id: str, http_req: Request):
+    """List all computations that a user has scheduled (in the queue)
+    """
     userId = http_req.headers.get("UserId")
     role = http_req.headers.get("Role")
 
@@ -166,6 +173,8 @@ def list_user_computations(user_id: str, http_req: Request):
 @router.delete("/api/scheduler/computations/{user_id}", tags=["Scheduler"])
 @router.delete("/api/scheduler/computations/{user_id}/", include_in_schema=False) 
 def delete_scheduled_computation(user_id: str, http_req: Request):
+    """Remove all computations scheduled by a specific user.
+    """
     userId = http_req.headers.get("UserId")
     role = http_req.headers.get("Role")
 
@@ -184,11 +193,8 @@ def delete_scheduled_computation(user_id: str, http_req: Request):
 @router.post("/api/scheduler/finish_computation", tags=["Scheduler"])
 @router.post("/api/scheduler/finish_computation/", include_in_schema=False)
 def finish_computation(request_body: FinishComputationMessage, http_req: Request):
-    """Takes a message from the solver execution service, singalling an execution has terminated
-    Deletes the process from the monitor service and launches the next scheduled computation
-
-    Args:
-        request (FinishComputationMessage): a computation id and a user id
+    """Clean up after a computation is done executing. Reassings resources and launches a queued computation. 
+    (Called by the dispatcher)
     """
     role = http_req.headers.get("Role")
 
@@ -214,6 +220,8 @@ def finish_computation(request_body: FinishComputationMessage, http_req: Request
 @router.delete("/api/scheduler/computation/running/{computation_id}", tags=["Scheduler"])
 @router.delete("/api/scheduler/computation/running/{computation_id}/", include_in_schema=False) 
 def delete_running_computation(computation_id: str, http_req: Request):
+    """Terminate a currently running computation
+    """
     # get user_id for computation
     monitor_get_request_url = "http://%s/api/monitor/process/%s" % (MONITOR_SERVICE_IP, computation_id)
     monitor_get_response = requests.get(monitor_get_request_url, headers=headers)
