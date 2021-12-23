@@ -96,15 +96,8 @@ def create_computation(request_body: ScheduleComputationRequest, http_req: Reque
 
     # check if the computation request is ever runnable with the user's quota
     user_quota = get_user_quota(request_body.user_id)
-    print("user quota:", user_quota)
     limit_vcpu = user_quota.get("vCpu")
     limit_memory = user_quota.get("memory")
-
-    print(limit_memory)
-    print(limit_vcpu)
-
-    print(request_body)
-    print(request_body.vcpus)
 
     if (len(request_body.solver_ids) > limit_vcpu):
         raise HTTPException(status_code=403, detail="""The requested computation can never be launched, 
@@ -250,9 +243,6 @@ def delete_running_computation(computation_id: str, http_req: Request):
     mzn_request_url = "http://%s:8080/delete/%s" % (MZN_SERVICE_IP, computation_id)
     solver_execution_response = requests.post(mzn_request_url, headers=headers)     
 
-    print("DELETE EXECUTION")
-    print(solver_execution_response)
-    print(solver_execution_response.json())
     if(solver_execution_response.status_code > 210):
         response_body = solver_execution_response.json()
         print(response_body)
@@ -277,9 +267,6 @@ def user_resources_are_available(user_id, vcpu_requested, memory_requested) -> b
     getQuotaResult = get_user_quota(user_id)
     limit_vcpu = getQuotaResult.get("vCpu")
     limit_memory = getQuotaResult.get("memory")
-
-    print("limit_vcpu: ", limit_vcpu)
-    print("limit_memory: ", limit_memory)
 
     # A list of monitored processes
     getMonitorForUserResult = get_user_monitor_processes(user_id)
@@ -348,7 +335,6 @@ def launch_computation(computation: ScheduleComputationRequest):
     if (computation.solver_options != None):
         solver_execution_request["solver_options"] = computation.solver_options
 
-    print(solver_execution_request)
     mzn_request_url = "http://%s:8080/run" % (MZN_SERVICE_IP)
 
     solver_execution_response = requests.post(mzn_request_url, json = solver_execution_request, headers=headers)     
@@ -364,7 +350,6 @@ def launch_computation(computation: ScheduleComputationRequest):
         raise HTTPException(status_code=solver_execution_response.status_code, detail=error_dict)
 
     solver_execution_response_body = solver_execution_response.json()
-    print(solver_execution_response_body)
     computation_id = solver_execution_response_body.get("computation_id")
 
     # Post the computation to the monitor Service: 
@@ -466,9 +451,7 @@ def get_user_quota(user_id: str) -> Dict[int, int]:
         }
         raise HTTPException(status_code=response.status_code, detail=error_dict)
 
-    print(response)
     quota = response.json()
-    print("Quota: ", quota)
 
     return quota
 
@@ -486,11 +469,7 @@ def get_mzn_url(user_id, file_id):
         }
         raise HTTPException(status_code=response.status_code, detail=error_dict)
 
-    print(response)
     url = response.json()
-
-    print("mzn url")
-    print(url)
 
     return url
 
@@ -508,10 +487,7 @@ def get_solver_image(solver_id):
         }
         raise HTTPException(status_code=response.status_code, detail=error_dict)
 
-    print(response)
-    solver = response.json()
-    print("solver image")
-    print(solver)  
+    solver = response.json()  
 
     solver_image = solver.get("image")
     return solver_image
@@ -529,9 +505,7 @@ def get_user_monitor_processes(user_id: str):
         }
         raise HTTPException(status_code=response.status_code, detail=error_dict)
 
-    print("monitor", response)
     user_processes = response.json()
-    print("monitor: ", user_processes)
     
     return user_processes
 
