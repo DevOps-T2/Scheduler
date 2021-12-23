@@ -193,7 +193,7 @@ def delete_scheduled_computation(user_id: str, http_req: Request):
 @router.post("/api/scheduler/finish_computation", tags=["Scheduler"])
 @router.post("/api/scheduler/finish_computation/", include_in_schema=False)
 def finish_computation(request_body: FinishComputationMessage, http_req: Request):
-    """Clean up after a computation is done executing. Reassings resources and launches a queued computation. 
+    """Clean up after a computation is done executing. Reassigns resources and launches a queued computation. 
     (Called by the dispatcher)
     """
     role = http_req.headers.get("Role")
