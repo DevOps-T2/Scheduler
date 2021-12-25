@@ -19,8 +19,8 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GKE_PROJECT }}
-  GKE_CLUSTER: dev    # TODO: update to cluster name
-  GKE_ZONE: europe-west1-b   # TODO: update to cluster zone
+  GKE_CLUSTER_NAME: ${{secrets.GKE_CLUSTER_NAME}}    # TODO: update to cluster name
+  GKE_CLUSTER_ZONE: ${{secrets.GKE_CLUSTER_ZONE}}   # TODO: update to cluster zone
   DEPLOYMENT_NAME: scheduler # TODO: update to deployment name
   IMAGE: scheduler
 
@@ -47,8 +47,8 @@ jobs:
     # Get the GKE credentials so we can deploy to the cluster
     - uses: google-github-actions/get-gke-credentials@v0.2.1
       with:
-        cluster_name: ${{ env.GKE_CLUSTER }}
-        location: ${{ env.GKE_ZONE }}
+        cluster_name: ${{ env.GKE_CLUSTER_NAME }}
+        location: ${{ env.GKE_CLUSTER_ZONE }}
         credentials: ${{ secrets.GKE_SA_KEY }}
 
     # Build the Docker image
